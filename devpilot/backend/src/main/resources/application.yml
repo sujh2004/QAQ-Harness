@@ -33,6 +33,23 @@ app:
   ai:
     chat-model: ${CHAT_MODEL:qwen-plus}
     embedding-model: ${EMBEDDING_MODEL:text-embedding-v3}
+  skill:
+    install-dir: ${APP_SKILL_DIR:./data/skills}
+    default-timeout: 20s
+    max-output-bytes: 65536
+    # A skill can only be launched with one of these interpreters. Anything else cannot run.
+    allowed-runtimes:
+      NODE: node
+      PYTHON: python
+    # Everything not named here is withheld from the skill process — model credentials and database
+    # passwords must never be reachable from a downloaded script.
+    environment-allow-list:
+      - PATH
+      - SYSTEMROOT
+      - TEMP
+      - TMP
+      - LANG
+    marketplace-url: ${SKILL_MARKETPLACE_URL:}
   repository:
     # Relative project repository paths resolve against this directory.
     base-dir: ${APP_REPOSITORY_BASE_DIR:${user.dir}}

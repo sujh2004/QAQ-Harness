@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Type-safe application configuration.
@@ -13,13 +14,39 @@ import java.util.List;
  * @param runtime agent runtime configuration
  * @param repository local source repository configuration
  * @param ai model selection
+ * @param skill executable skill configuration
  */
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(
         Cors cors,
         @DefaultValue RuntimeSettings runtime,
         @DefaultValue Repository repository,
-        @DefaultValue Ai ai) {
+        @DefaultValue Ai ai,
+        @DefaultValue Skill skill) {
+
+    /**
+     * Executable skill configuration.
+     *
+     * <p>Skills run real scripts, so every limit here is a security control rather than a tuning
+     * knob. {@code allowedRuntimes} is the list of interpreters a skill may be launched with;
+     * anything not named here cannot be executed at all.
+     *
+     * @param installDir directory installed skill packages live in
+     * @param defaultTimeout wall-clock limit of one skill execution
+     * @param maxOutputBytes largest amount of output captured from a skill
+     * @param allowedRuntimes runtime name to interpreter command, for example {@code NODE: node}
+     * @param environmentAllowList environment variable names a skill process may inherit; every
+     *     other variable, including model credentials, is withheld
+     * @param marketplaceUrl HTTPS manifest the marketplace reads its catalogue from
+     */
+    public record Skill(
+            @DefaultValue("./data/skills") String installDir,
+            @DefaultValue("20s") Duration defaultTimeout,
+            @DefaultValue("65536") int maxOutputBytes,
+            Map<String, String> allowedRuntimes,
+            List<String> environmentAllowList,
+            String marketplaceUrl) {
+    }
 
     /**
      * Browser access configuration.
