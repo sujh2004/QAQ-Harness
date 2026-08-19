@@ -1,0 +1,25 @@
+# Self-contained demo profile: in-memory H2 plus the demo project and incident logs.
+#
+#   mvn spring-boot:run "-Dspring-boot.run.profiles=demo"
+#
+# Nothing else is needed — no Docker, no MySQL, no API key. Data lives only for the life of the
+# process, which is what makes it safe to reset between demos.
+#
+# Add the "dashscope" profile and DASHSCOPE_API_KEY on top to also run agents:
+#   mvn spring-boot:run "-Dspring-boot.run.profiles=demo,dashscope"
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:devpilot-demo;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;LOCK_TIMEOUT=10000
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema-h2.sql
+      # The canonical demo data, read from the repository so there is only one copy of it.
+      data-locations: file:../sql/demo-data.sql
+
+logging:
+  level:
+    com.devpilot: INFO

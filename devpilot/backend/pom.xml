@@ -75,9 +75,10 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <!-- Also used by the self-contained "demo" profile, so it is not test-scoped. -->
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>test</scope>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

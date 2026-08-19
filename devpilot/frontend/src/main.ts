@@ -1,6 +1,4 @@
-import 'element-plus/theme-chalk/base.css'
-import 'element-plus/theme-chalk/el-button.css'
-import 'element-plus/theme-chalk/el-tag.css'
+import 'element-plus/dist/index.css'
 import './styles.css'
 
 import { createApp } from 'vue'

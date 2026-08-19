@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -86,6 +87,21 @@ public final class GlobalExceptionHandler {
     public ResponseEntity<Result<Void>> handleConstraintViolation(ConstraintViolationException exception) {
         return ResponseEntity.badRequest()
                 .body(Result.failure(ErrorCode.INVALID_ARGUMENT, exception.getMessage()));
+    }
+
+    /**
+     * Handles a request body that could not be parsed at all, for example malformed JSON or a body
+     * that is not valid UTF-8. This is the caller's mistake, not a server fault, so it must not be
+     * reported as an internal error.
+     *
+     * @param exception unreadable request body
+     * @return client-safe bad-request response
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Result<Void>> handleUnreadableBody(HttpMessageNotReadableException exception) {
+        LOGGER.warn("Rejected an unreadable request body: {}", exception.getMessage());
+        return ResponseEntity.badRequest()
+                .body(Result.failure(ErrorCode.INVALID_ARGUMENT, "Request body is not readable JSON"));
     }
 
     /**
