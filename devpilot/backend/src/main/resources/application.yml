@@ -81,8 +81,10 @@ app:
       max-result-items: 100
       max-result-bytes: 65536
       max-concurrent-executions: 8
-      # The MVP is read-only. Phase 5 adds saveTestCases and the knowledge index writer here.
-      mutating-allow-list: []
+      # Only these tools may change state, and only for agents whose profile allows mutation.
+      # Everything else is refused by DefaultDenyToolPolicy.
+      mutating-allow-list:
+        - saveTestCases
 
 logging:
   level:

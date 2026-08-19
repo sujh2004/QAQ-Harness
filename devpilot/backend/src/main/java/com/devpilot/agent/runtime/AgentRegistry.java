@@ -78,7 +78,8 @@ public class AgentRegistry {
      */
     public ToolScope scopeOf(AgentDefinition agent) {
         ToolScope application = applicationScope();
-        ToolScope declared = ToolScope.readOnly(agent.tools(), agent.permissions());
+        ToolScope declared =
+                new ToolScope(agent.tools(), agent.permissions(), agent.allowMutating());
         declared.requireNarrowerThan(application);
         return application.narrow(declared);
     }
@@ -97,10 +98,11 @@ public class AgentRegistry {
     }
 
     /**
-     * Builds the outermost scope: every registered tool, read-only.
+     * Builds the outermost scope: every registered tool.
      *
-     * <p>The MVP runs read-only, so mutation is withheld here rather than in each profile. Enabling
-     * a write tool later is a deliberate change at this one place plus the policy allow list.
+     * <p>Mutation is permitted here only in the sense that the application does not forbid it
+     * outright; whether a specific write tool may actually run is decided twice more, by the agent
+     * profile and by the policy allow list. Neither is reachable from a model.
      *
      * @return application scope
      */
@@ -112,6 +114,6 @@ public class AgentRegistry {
         Set<ToolPermission> permissions = registered.stream()
                 .map(ToolDefinition::requiredPermission)
                 .collect(Collectors.toUnmodifiableSet());
-        return ToolScope.readOnly(names, permissions);
+        return new ToolScope(names, permissions, true);
     }
 }

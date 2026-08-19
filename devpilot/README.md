@@ -2,7 +2,7 @@
 
 DevPilot 是面向企业研发与故障分析的多 Agent 平台。本目录按《DevPilot 企业研发多 Agent 平台实施规格书》从 Phase 0 开始实现。
 
-当前状态：Phase 4 单 Agent 与 Tool Calling。已提供 Spring Boot 后端、Vue 3 前端、MySQL 开发容器、统一响应和健康检查；追加式 `session_event` 事件流、turn/step 状态机、取消与重启恢复、Tool 注册表与执行管线；项目 CRUD、系统日志查询与导入、会话与消息投影 API；六个只读 Tool 与 `demo-project/order-demo` 演示仓库；`debug_agent` 与自研 Agent 循环，人设与 Tool 视图由 profile 组合。多 Agent、Supervisor 与 RAG 将在后续 Phase 实现，目前没有伪造接口。
+当前状态：Phase 5 专业 Agent。已提供 Spring Boot 后端、Vue 3 前端与四个可用页面、MySQL 开发容器与自包含 demo profile；追加式 `session_event` 事件流、turn/step 状态机、取消与重启恢复、Tool 注册表与执行管线；项目 CRUD、系统日志查询、会话与消息投影、测试用例；七个 Tool 与 `demo-project/order-demo` 演示仓库；`code_agent` / `log_agent` / `test_agent` / `debug_agent` 四个 Agent。Knowledge Agent、Supervisor 与 RAG 在后续 Phase，目前没有伪造接口。
 
 ## 环境要求
 
@@ -48,9 +48,15 @@ GET    /api/v1/sessions/{sessionId}/messages
 GET    /api/v1/sessions/{sessionId}/runs
 GET    /api/v1/sessions/{sessionId}/events?afterSeq=&limit=
 POST   /api/v1/sessions/{sessionId}/turns/{turnId}/cancel
+
+GET    /api/v1/projects/{id}/test-cases
+GET    /api/v1/test-cases/{id}
+DELETE /api/v1/test-cases/{id}
+
+POST   /api/v1/debug/agents/{agentName}     # 仅 dev / demo profile
 ```
 
-`POST /api/v1/chat/stream` 与知识库、测试用例接口属于后续 Phase。
+`POST /api/v1/chat/stream` 与知识库接口属于后续 Phase。
 
 ## 已注册的 Tool
 
@@ -64,12 +70,31 @@ Tool 只能经 `ToolRegistry` 调用，目前没有对外的 HTTP 入口——Ph
 | `searchLogs` | `LOG_READ` | 按服务、级别、关键词、时间范围检索日志，limit ≤ 100 |
 | `getLogByTraceId` | `LOG_READ` | 取一次请求的全部日志 |
 | `getRecentErrorSummary` | `LOG_READ` | 按服务与异常类型聚合近期错误 |
+| `saveTestCases` | `TEST_CASE_WRITE` | 保存 Agent 设计的测试用例，**唯一的写操作** |
 
-全部为只读。代码读取限制在项目 `repositoryPath` 内：路径先规范化再解析符号链接并两次校验，`.env`、`*.key`、`*.pem`、`application-prod.yml`、`credentials.*` 等按文件名黑名单拒绝，只有白名单扩展名的文本文件可以打开，检索使用 Java NIO 而非 shell。
+除 `saveTestCases` 外全部只读。代码读取限制在项目 `repositoryPath` 内：路径先规范化再解析符号链接并两次校验，`.env`、`*.key`、`*.pem`、`application-prod.yml`、`credentials.*` 等按文件名黑名单拒绝，只有白名单扩展名的文本文件可以打开，检索使用 Java NIO 而非 shell。
+
+写操作要同时通过两道门：Agent profile 的 `allowMutating` 与 `app.runtime.tool.mutating-allow-list`，两者都在模型触及范围之外。
 
 ## Agent
 
-`debug_agent` 同时绑定代码与日志工具，由 `resources/agent-profiles/standard.yml` 与 `resources/prompts/agents/debug_agent.md` 组合而成。新增 Agent 是加 profile 条目，不改 Agent 循环。
+由 `resources/agent-profiles/standard.yml` 与 `resources/prompts/agents/*.md` 组合而成，新增 Agent 是加 profile 条目，不改 Agent 循环。
+
+| Agent | 可见工具 | 说明 |
+|---|---|---|
+| `debug_agent` | 代码 + 日志 | 通用排查助手，用于单 Agent 验证 |
+| `code_agent` | 代码 | 代码定位与调用链分析 |
+| `log_agent` | 日志 | 故障现象定位与异常聚合 |
+| `test_agent` | 代码 + 日志 + `saveTestCases` | 唯一允许写的 Agent |
+
+Knowledge Agent 需要 RAG 工具，随 Phase 7 一起加入——没有工具的 Agent 只是空壳。
+
+dev / demo profile 下可单独调用某个 Agent：
+
+```
+POST /api/v1/debug/agents/log_agent
+{"projectId": 1, "message": "最近有哪些 ERROR？"}
+```
 
 Agent 循环每轮从**已提交事件**投影模型历史，因此模型看到的内容一定先被记录；工具只经 `ToolRegistry` 执行，作用域、鉴权、超时与限额无法绕过；步数上限由 profile 决定。
 

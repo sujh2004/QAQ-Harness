@@ -82,3 +82,19 @@ CREATE TABLE IF NOT EXISTS chat_message (
 );
 
 CREATE INDEX IF NOT EXISTS idx_session_id ON chat_message (session_id);
+
+CREATE TABLE IF NOT EXISTS test_case (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    project_id BIGINT NOT NULL,
+    session_id VARCHAR(64),
+    title VARCHAR(255) NOT NULL,
+    priority VARCHAR(20),
+    precondition CLOB,
+    steps_json CLOB,
+    expected_result CLOB,
+    source VARCHAR(30) DEFAULT 'AGENT',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_test_case_project ON test_case (project_id);
+CREATE INDEX IF NOT EXISTS idx_test_case_session ON test_case (session_id);

@@ -4,11 +4,13 @@
 # 作用域只能收窄：这里列出的 Tool 与权限必须是应用已注册能力的子集，
 # 运行时会校验，试图扩权的 profile 会让应用启动失败。
 #
-# 执行时 ToolPolicy 仍会二次鉴权，可见不等于可执行。
+# 执行时 ToolPolicy 仍会二次鉴权，可见不等于可执行。写操作还需要同时满足
+# allowMutating 与 app.runtime.tool.mutating-allow-list 两道门。
 
 version: standard@1
 
 agents:
+  # 同时绑定代码与日志工具的通用排查助手，用于单 Agent 验证。
   debug_agent:
     displayName: 调试助手
     description: 通过检索代码与日志定位研发问题，适用于故障排查与代码定位
@@ -25,3 +27,47 @@ agents:
     permissions:
       - CODE_READ
       - LOG_READ
+
+  code_agent:
+    displayName: 代码分析 Agent
+    description: 阅读与分析项目 Java 代码，适用于代码定位、调用链分析和异常代码分析
+    promptFile: agents/code_agent.md
+    modelRoute: chat.default
+    maxSteps: 6
+    tools:
+      - listFiles
+      - searchCode
+      - readCodeFile
+    permissions:
+      - CODE_READ
+
+  log_agent:
+    displayName: 日志分析 Agent
+    description: 检索与聚合系统日志，适用于故障现象定位、异常统计和调用链还原
+    promptFile: agents/log_agent.md
+    modelRoute: chat.default
+    maxSteps: 6
+    tools:
+      - searchLogs
+      - getLogByTraceId
+      - getRecentErrorSummary
+    permissions:
+      - LOG_READ
+
+  # 唯一允许写操作的 Agent，且只能写测试用例。
+  test_agent:
+    displayName: 测试设计 Agent
+    description: 根据代码与故障结论设计测试用例并落库，适用于回归方案与验证设计
+    promptFile: agents/test_agent.md
+    modelRoute: chat.default
+    maxSteps: 8
+    allowMutating: true
+    tools:
+      - searchCode
+      - readCodeFile
+      - searchLogs
+      - saveTestCases
+    permissions:
+      - CODE_READ
+      - LOG_READ
+      - TEST_CASE_WRITE

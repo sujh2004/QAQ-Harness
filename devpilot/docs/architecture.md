@@ -125,6 +125,15 @@ DashScope 的自动配置在缺少 API Key 时会抛异常并拖垮整个上下�
 
 Agent 的人设、模型路由、步数与可见 Tool 全部来自 `resources/agent-profiles/standard.yml` 与 `resources/prompts/`，新增 Agent 是加 profile 条目，不是改循环。profile 声明的作用域必须是应用能力的子集，试图扩权会让应用启动失败。
 
+## 写操作的两道门
+
+MVP 只有一个会写数据的工具：`saveTestCases`。它要同时通过两道互相独立、都在模型触及范围之外的门：
+
+1. Agent profile 的 `allowMutating`——只有 `test_agent` 为 true；
+2. `app.runtime.tool.mutating-allow-list`——部署级白名单。
+
+任何一道不满足，`DefaultDenyToolPolicy` 就拒绝，并照常留下成对事件。写入的归属由运行时决定而非模型声明：工具用 `ToolExecutionContext` 里的 sessionId 覆盖模型传来的值。
+
 ## 读取投影
 
 `chat_message` 只是 `user_message` 与 `assistant_message` 事件的读取投影，用于高效分页；它不是第二套消息事实。每行带 `source_seq` 指向来源事件，配合 `(session_id, source_seq)` 唯一键让投影幂等，并可用 `ChatMessageProjection.rebuild` 从事件流整体重建。
@@ -133,5 +142,5 @@ Agent 的人设、模型路由、步数与可见 Tool 全部来自 `resources/ag
 
 ## 分阶段约束
 
-Phase 0 建立工程、配置、统一错误响应和健康检查。Phase 1 实现 Session Event Log、生命周期、Tool Registry 与运行时接口，不创建 Controller、业务表或空壳 Agent。Phase 2 加入项目、日志与会话业务：`dev_project`、`system_log`、`chat_session` 与作为投影的 `chat_message`，以及对应的 REST 接口和 demo 数据。Phase 3 加入 Code Tool 与 Log Tool 及 `demo-project/order-demo` 演示仓库，全部只读且经 `ToolRegistry` 执行；此阶段不建 Supervisor，Fake Model Provider 仍只存在于测试源码。
+Phase 0 建立工程、配置、统一错误响应和健康检查。Phase 1 实现 Session Event Log、生命周期、Tool Registry 与运行时接口，不创建 Controller、业务表或空壳 Agent。Phase 2 加入项目、日志与会话业务：`dev_project`、`system_log`、`chat_session` 与作为投影的 `chat_message`，以及对应的 REST 接口和 demo 数据。Phase 3 加入 Code Tool 与 Log Tool 及 `demo-project/order-demo` 演示仓库，全部只读且经 `ToolRegistry` 执行；此阶段不建 Supervisor，Fake Model Provider 仍只存在于测试源码。Phase 4 实现自研 Agent 循环与 Spring AI Provider。Phase 5 加入 `code_agent`、`log_agent`、`test_agent` 与 `saveTestCases`；Knowledge Agent 依赖 Phase 7 的 RAG 工具，没有工具的 Agent 只是空壳，因此推迟到 RAG 之后。Supervisor 属于 Phase 6。
 

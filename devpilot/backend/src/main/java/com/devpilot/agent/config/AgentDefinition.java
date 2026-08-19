@@ -18,6 +18,8 @@ import java.util.Set;
  * @param maxSteps largest number of model requests one turn may make
  * @param tools tool names this agent may see
  * @param permissions capabilities this agent holds
+ * @param allowMutating whether this agent may run tools that change state; still subject to the
+ *     policy allow list at execution time
  */
 public record AgentDefinition(
         String name,
@@ -27,7 +29,8 @@ public record AgentDefinition(
         String modelRoute,
         int maxSteps,
         Set<String> tools,
-        Set<ToolPermission> permissions) {
+        Set<ToolPermission> permissions,
+        boolean allowMutating) {
 
     /** Normalises the collections into immutable copies. */
     public AgentDefinition {

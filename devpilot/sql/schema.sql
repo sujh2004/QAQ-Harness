@@ -84,3 +84,18 @@ CREATE TABLE IF NOT EXISTS chat_message (
     UNIQUE KEY uk_message_source (session_id, source_seq),
     INDEX idx_session_id (session_id)
 );
+
+CREATE TABLE IF NOT EXISTS test_case (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    project_id BIGINT NOT NULL,
+    session_id VARCHAR(64),
+    title VARCHAR(255) NOT NULL,
+    priority VARCHAR(20),
+    precondition TEXT,
+    steps_json MEDIUMTEXT,
+    expected_result TEXT,
+    source VARCHAR(30) DEFAULT 'AGENT',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_project (project_id),
+    INDEX idx_session (session_id)
+);
