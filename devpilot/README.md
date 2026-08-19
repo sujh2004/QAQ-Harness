@@ -2,7 +2,7 @@
 
 DevPilot 是面向企业研发与故障分析的多 Agent 平台。本目录按《DevPilot 企业研发多 Agent 平台实施规格书》从 Phase 0 开始实现。
 
-当前状态：Phase 5 专业 Agent。已提供 Spring Boot 后端、Vue 3 前端与四个可用页面、MySQL 开发容器与自包含 demo profile；追加式 `session_event` 事件流、turn/step 状态机、取消与重启恢复、Tool 注册表与执行管线；项目 CRUD、系统日志查询、会话与消息投影、测试用例；七个 Tool 与 `demo-project/order-demo` 演示仓库；`code_agent` / `log_agent` / `test_agent` / `debug_agent` 四个 Agent。Knowledge Agent、Supervisor 与 RAG 在后续 Phase，目前没有伪造接口。
+当前状态：Phase 6 Supervisor。已提供 Spring Boot 后端、Vue 3 前端与四个可用页面、MySQL 开发容器与自包含 demo profile；追加式 `session_event` 事件流、turn/step 状态机、取消与重启恢复、Tool 注册表与执行管线；项目 CRUD、系统日志查询、会话与消息投影、测试用例；七个证据工具与四个委派工具、`demo-project/order-demo` 演示仓库；Supervisor 与四个专业 Agent。Knowledge Agent 与 RAG 在 Phase 7，SSE 聊天在 Phase 8，目前没有伪造接口。
 
 ## 环境要求
 
@@ -82,10 +82,13 @@ Tool 只能经 `ToolRegistry` 调用，目前没有对外的 HTTP 入口——Ph
 
 | Agent | 可见工具 | 说明 |
 |---|---|---|
-| `debug_agent` | 代码 + 日志 | 通用排查助手，用于单 Agent 验证 |
+| `supervisor` | 四个委派工具 | 判断该问谁、分派任务、汇总证据；看不到任何原始证据工具 |
+| `debug_agent` | 代码 + 日志 | 通用排查助手 |
 | `code_agent` | 代码 | 代码定位与调用链分析 |
 | `log_agent` | 日志 | 故障现象定位与异常聚合 |
 | `test_agent` | 代码 + 日志 + `saveTestCases` | 唯一允许写的 Agent |
+
+Supervisor 的工具就是「问某个专业 Agent」（`askCodeAgent` 等），因此委派复用同一条 Tool 执行管线，专业 Agent 作为嵌套 run 出现，审计轨迹形成树。
 
 Knowledge Agent 需要 RAG 工具，随 Phase 7 一起加入——没有工具的 Agent 只是空壳。
 

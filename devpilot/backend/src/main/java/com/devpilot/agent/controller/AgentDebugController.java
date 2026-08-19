@@ -68,7 +68,7 @@ public class AgentDebugController {
                 : request.sessionId();
 
         String turnId = lifecycleService.startTurn(sessionId, "DEBUG", request.message());
-        AgentTurnResult result = agentRuntime.runTurn(new AgentTurnRequest(
+        AgentTurnResult result = agentRuntime.runTurn(AgentTurnRequest.of(
                 sessionId, request.projectId(), turnId, agentName, request.message()));
 
         lifecycleService.endTurn(

@@ -97,6 +97,7 @@ public class SessionProjector {
                     MutableStep step = new MutableStep();
                     step.stepId = event.stepId();
                     step.turnId = event.turnId();
+                    step.runId = event.runId();
                     step.index = payload.index();
                     step.startedAt = event.occurredAt();
                     steps.put(event.stepId(), step);
@@ -217,6 +218,7 @@ public class SessionProjector {
     private static final class MutableStep {
         private String stepId;
         private String turnId;
+        private String runId;
         private int index;
         private StepStatus status = StepStatus.RUNNING;
         private String detail;
@@ -224,7 +226,7 @@ public class SessionProjector {
         private Instant endedAt;
 
         private StepView toView() {
-            return new StepView(stepId, turnId, index, status, detail, startedAt, endedAt);
+            return new StepView(stepId, turnId, runId, index, status, detail, startedAt, endedAt);
         }
     }
 

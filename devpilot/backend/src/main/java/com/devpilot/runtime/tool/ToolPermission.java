@@ -16,5 +16,8 @@ public enum ToolPermission {
     /** Write to the knowledge index. */
     KNOWLEDGE_INDEX_WRITE,
     /** Persist generated test cases. */
-    TEST_CASE_WRITE
+    TEST_CASE_WRITE,
+    /** Hand work to another agent. Delegation reads nothing itself; the specialist is authorised
+     * against its own scope when it runs. */
+    AGENT_DELEGATE
 }

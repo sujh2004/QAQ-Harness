@@ -14,7 +14,28 @@ package com.devpilot.agent.runtime;
  * @param turnId turn the agent works in
  * @param agentName agent that should run
  * @param userMessage input to work on
+ * @param parentRunId run that delegated this work, null for the outermost agent
  */
 public record AgentTurnRequest(
-        String sessionId, Long projectId, String turnId, String agentName, String userMessage) {
+        String sessionId,
+        Long projectId,
+        String turnId,
+        String agentName,
+        String userMessage,
+        String parentRunId) {
+
+    /**
+     * Builds a request for an agent nobody delegated to.
+     *
+     * @param sessionId owning session
+     * @param projectId project the session belongs to
+     * @param turnId turn the agent works in
+     * @param agentName agent that should run
+     * @param userMessage input to work on
+     * @return top-level agent request
+     */
+    public static AgentTurnRequest of(
+            String sessionId, Long projectId, String turnId, String agentName, String userMessage) {
+        return new AgentTurnRequest(sessionId, projectId, turnId, agentName, userMessage, null);
+    }
 }

@@ -85,7 +85,7 @@ public class DefaultAgentRuntime implements AgentRuntime {
         String profileVersion = agentRegistry.profileVersion();
 
         String runId = lifecycleService.startAgentRun(
-                request.sessionId(), request.turnId(), null, null,
+                request.sessionId(), request.turnId(), null, request.parentRunId(),
                 agent.name(), agent.displayName(), request.userMessage());
 
         try {
@@ -115,10 +115,10 @@ public class DefaultAgentRuntime implements AgentRuntime {
             }
 
             String stepId = lifecycleService.startStep(
-                    request.sessionId(), request.turnId(), "model request " + (step + 1));
+                    request.sessionId(), request.turnId(), runId, "model request " + (step + 1));
 
             List<ModelMessage> history = historyProjector.project(
-                    systemPrompt, eventStore.readAll(request.sessionId()), request.turnId());
+                    systemPrompt, eventStore.readAll(request.sessionId()), request.turnId(), runId);
             ModelResponse response = modelGateway.call(new ModelRequest(
                     agent.modelRoute(), history, agentRegistry.toolSpecs(scope), null, null, null));
 

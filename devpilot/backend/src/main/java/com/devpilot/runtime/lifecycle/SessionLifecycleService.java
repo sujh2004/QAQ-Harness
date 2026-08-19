@@ -115,16 +115,35 @@ public class SessionLifecycleService {
      */
     @Transactional
     public String startStep(String sessionId, String turnId, String purpose) {
+        return startStep(sessionId, turnId, null, purpose);
+    }
+
+    /**
+     * Starts a step inside a running turn, owned by one agent run.
+     *
+     * <p>The "one step at a time" rule is scoped to the run, not the turn: a supervisor holds its
+     * own step open while a specialist it delegated to opens steps of its own.
+     *
+     * @param sessionId owning session
+     * @param turnId owning turn
+     * @param runId agent run opening the step, null when no run owns it
+     * @param purpose short description of what the step is for
+     * @return identifier of the new step
+     * @throws IllegalLifecycleTransitionException when the turn is not running or the same run
+     *     already has a running step
+     */
+    @Transactional
+    public String startStep(String sessionId, String turnId, String runId, String purpose) {
         SessionProjection projection = project(sessionId);
         TurnView turn = requireRunningTurn(projection, sessionId, turnId);
-        if (!projection.openSteps(turnId).isEmpty()) {
+        if (!projection.openSteps(turnId, runId).isEmpty()) {
             throw new IllegalLifecycleTransitionException(
-                    "Turn " + turnId + " already has a running step");
+                    "Agent run " + runId + " already has a running step in turn " + turnId);
         }
 
         String stepId = RuntimeIds.newStepId();
-        eventStore.append(sessionId, AppendEventCommand.ofStep(
-                SessionEventType.STEP_STARTED, turnId, stepId,
+        eventStore.append(sessionId, AppendEventCommand.ofRun(
+                SessionEventType.STEP_STARTED, turnId, stepId, runId,
                 new StepStartedPayload(turn.steps().size(), purpose)));
         return stepId;
     }
@@ -147,8 +166,9 @@ public class SessionLifecycleService {
             throw new IllegalLifecycleTransitionException(
                     "Step " + stepId + " cannot move from " + step.status() + " to " + status);
         }
-        eventStore.append(sessionId, AppendEventCommand.ofStep(
-                SessionEventType.STEP_ENDED, step.turnId(), stepId, new StepEndedPayload(status, detail)));
+        eventStore.append(sessionId, AppendEventCommand.ofRun(
+                SessionEventType.STEP_ENDED, step.turnId(), stepId, step.runId(),
+                new StepEndedPayload(status, detail)));
     }
 
     /**
@@ -179,7 +199,9 @@ public class SessionLifecycleService {
         String runId = RuntimeIds.newRunId();
         eventStore.append(sessionId, AppendEventCommand.ofRun(
                 SessionEventType.AGENT_STARTED, turnId, stepId, runId,
-                new AgentStartedPayload(agentName, displayName, parentRunId, summarize(inputSummary))));
+                // The input is recorded verbatim: for a delegated run it is the task the specialist
+                // will read as its instruction, so truncating it would change what the model sees.
+                new AgentStartedPayload(agentName, displayName, parentRunId, inputSummary)));
         return runId;
     }
 
@@ -339,8 +361,8 @@ public class SessionLifecycleService {
                             failed ? RunStatus.FAILED : RunStatus.CANCELLED, null, childDetail)));
         }
         for (StepView step : projection.openSteps(turnId)) {
-            commands.add(AppendEventCommand.ofStep(
-                    SessionEventType.STEP_ENDED, turnId, step.stepId(),
+            commands.add(AppendEventCommand.ofRun(
+                    SessionEventType.STEP_ENDED, turnId, step.stepId(), step.runId(),
                     new StepEndedPayload(failed ? StepStatus.FAILED : StepStatus.CANCELLED, childDetail)));
         }
         commands.add(AppendEventCommand.ofTurn(

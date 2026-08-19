@@ -277,6 +277,6 @@ class AgentRuntimeTest {
 
     private AgentTurnResult run(String userMessage) {
         return agentRuntime.runTurn(
-                new AgentTurnRequest(sessionId, projectId, turnId, "debug_agent", userMessage));
+                AgentTurnRequest.of(sessionId, projectId, turnId, "debug_agent", userMessage));
     }
 }

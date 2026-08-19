@@ -83,6 +83,22 @@ public record SessionProjection(
     }
 
     /**
+     * Lists the running steps opened by one agent run.
+     *
+     * <p>Steps are scoped to a run rather than to the turn, so a supervisor may hold a step open
+     * while a specialist it delegated to runs steps of its own.
+     *
+     * @param turnId turn identifier
+     * @param runId agent run identifier, null for steps opened outside any run
+     * @return running steps of that run, in start order
+     */
+    public List<StepView> openSteps(String turnId, String runId) {
+        return openSteps(turnId).stream()
+                .filter(step -> java.util.Objects.equals(step.runId(), runId))
+                .toList();
+    }
+
+    /**
      * Lists the agent runs of a turn that have not reached a terminal status.
      *
      * @param turnId turn identifier

@@ -125,6 +125,18 @@ DashScope 的自动配置在缺少 API Key 时会抛异常并拖垮整个上下�
 
 Agent 的人设、模型路由、步数与可见 Tool 全部来自 `resources/agent-profiles/standard.yml` 与 `resources/prompts/`，新增 Agent 是加 profile 条目，不是改循环。profile 声明的作用域必须是应用能力的子集，试图扩权会让应用启动失败。
 
+## 委派：专业 Agent 就是 Supervisor 的工具
+
+Supervisor 不是另一套编排引擎，它的工具是 `askCodeAgent`、`askLogAgent`、`askTestAgent`、`askDebugAgent`。委派因此复用同一条 Tool 执行管线：作用域解析、鉴权、超时、结果限额和成对事件全部照旧，不需要为多 Agent 再写一套。
+
+专业 Agent 作为**嵌套 run** 运行（`parentRunId` 指向 Supervisor 的 run），审计轨迹自然形成树而不是平铺列表。
+
+这带来一个约束修正：**step 归属于 agent run 而非 turn**。Supervisor 的 step 在委派期间保持打开，被委派的专业 Agent 要能开自己的 step。"同时只能有一个进行中的 step"因此收窄为"同一个 run 同时只能有一个"，这本来就是更准确的模型——一个 step 就是某个 Agent 的一次模型请求。
+
+上下文也按 run 隔离：顶层 Agent 看得到整段对话以保留记忆；被委派的专业 Agent 只看到分派给它的任务和它自己取到的证据。否则兄弟 Agent 的产出会被误读成"这活我已经干过了"。任务文本取自 `agent_started` 事件而非调用方传参，所以专业 Agent 读到的指令与审计轨迹里记录的完全一致。
+
+Supervisor 只持有 `AGENT_DELEGATE` 权限，看不到任何原始证据工具；专业 Agent 反过来看不到委派工具。
+
 ## 写操作的两道门
 
 MVP 只有一个会写数据的工具：`saveTestCases`。它要同时通过两道互相独立、都在模型触及范围之外的门：

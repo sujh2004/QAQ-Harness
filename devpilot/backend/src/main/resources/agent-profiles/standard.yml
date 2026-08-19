@@ -10,6 +10,23 @@
 version: standard@1
 
 agents:
+  # 调度者：自己不碰代码和日志，只把任务分派给专业 Agent 并汇总证据。
+  # 它的工具是「问某个专业 Agent」，因此委派复用了同一条 Tool 执行管线，
+  # 专业 Agent 作为嵌套 run 出现，审计轨迹自然形成树。
+  supervisor:
+    displayName: 调度 Agent
+    description: 判断需要哪些专业 Agent、分派任务并汇总为最终结论
+    promptFile: agents/supervisor.md
+    modelRoute: chat.default
+    maxSteps: 10
+    tools:
+      - askCodeAgent
+      - askLogAgent
+      - askTestAgent
+      - askDebugAgent
+    permissions:
+      - AGENT_DELEGATE
+
   # 同时绑定代码与日志工具的通用排查助手，用于单 Agent 验证。
   debug_agent:
     displayName: 调试助手
