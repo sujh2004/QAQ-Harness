@@ -98,3 +98,39 @@ CREATE TABLE IF NOT EXISTS test_case (
 
 CREATE INDEX IF NOT EXISTS idx_test_case_project ON test_case (project_id);
 CREATE INDEX IF NOT EXISTS idx_test_case_session ON test_case (session_id);
+
+CREATE TABLE IF NOT EXISTS skill (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    skill_key VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    version VARCHAR(30) NOT NULL,
+    description VARCHAR(500),
+    runtime VARCHAR(20) NOT NULL,
+    entrypoint VARCHAR(255) NOT NULL,
+    args_schema CLOB NOT NULL,
+    source_url VARCHAR(500),
+    checksum VARCHAR(128) NOT NULL,
+    install_path VARCHAR(500) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'INSTALLED',
+    installed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS project_skill (
+    project_id BIGINT NOT NULL,
+    skill_id BIGINT NOT NULL,
+    enabled TINYINT NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (project_id, skill_id)
+);
+
+CREATE TABLE IF NOT EXISTS skill_approval (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    session_id VARCHAR(64) NOT NULL,
+    skill_id BIGINT NOT NULL,
+    approved TINYINT NOT NULL,
+    decided_by VARCHAR(100) NOT NULL,
+    reason VARCHAR(500),
+    decided_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_skill_approval UNIQUE (session_id, skill_id)
+);

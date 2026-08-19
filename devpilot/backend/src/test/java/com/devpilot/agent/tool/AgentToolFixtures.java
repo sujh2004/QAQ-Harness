@@ -26,13 +26,13 @@ import java.util.Set;
 import java.util.UUID;
 
 /** Shared setup for the tests that drive the real code and log tools through the registry. */
-final class AgentToolFixtures {
+public final class AgentToolFixtures {
 
-    static final String AGENT = "debug_agent";
-    static final String PROFILE_VERSION = "standard@1";
-    static final LocalDateTime INCIDENT = LocalDateTime.of(2026, 8, 16, 10, 31, 2);
+    public static final String AGENT = "debug_agent";
+    public static final String PROFILE_VERSION = "standard@1";
+    public static final LocalDateTime INCIDENT = LocalDateTime.of(2026, 8, 16, 10, 31, 2);
 
-    static final ToolScope FULL_SCOPE = ToolScope.readOnly(
+    public static final ToolScope FULL_SCOPE = ToolScope.readOnly(
             Set.of(CodeSearchTools.LIST_FILES, CodeSearchTools.SEARCH_CODE, CodeSearchTools.READ_CODE_FILE,
                     LogTools.SEARCH_LOGS, LogTools.GET_LOG_BY_TRACE_ID, LogTools.GET_RECENT_ERROR_SUMMARY),
             Set.of(ToolPermission.CODE_READ, ToolPermission.LOG_READ));
@@ -47,7 +47,7 @@ final class AgentToolFixtures {
      * @param repositoryPath repository path to bind
      * @return new project identity
      */
-    static long newProject(ProjectService projectService, String repositoryPath) {
+    public static long newProject(ProjectService projectService, String repositoryPath) {
         return projectService.create(new CreateProjectRequest(
                         "tool-test", "tool-" + UUID.randomUUID().toString().substring(0, 8),
                         null, repositoryPath, null))
@@ -62,7 +62,7 @@ final class AgentToolFixtures {
      * @param projectId owning project
      * @return session identifier and turn identifier
      */
-    static String[] newSessionTurn(
+    public static String[] newSessionTurn(
             ChatSessionService chatSessionService,
             SessionLifecycleService lifecycleService,
             long projectId) {
@@ -82,7 +82,7 @@ final class AgentToolFixtures {
      * @param arguments raw arguments
      * @return terminal outcome
      */
-    static ToolExecutionResult invoke(
+    public static ToolExecutionResult invoke(
             ToolRegistry registry,
             String sessionId,
             String turnId,
@@ -102,7 +102,7 @@ final class AgentToolFixtures {
      * @param callId call to look up
      * @return projected call
      */
-    static ToolCallView auditOf(
+    public static ToolCallView auditOf(
             SessionLifecycleService lifecycleService, String sessionId, String callId) {
         SessionProjection projection = lifecycleService.project(sessionId);
         return projection.toolCall(callId).orElseThrow();
@@ -114,7 +114,7 @@ final class AgentToolFixtures {
      * @param logService log service
      * @param projectId owning project
      */
-    static void seedIncidentLogs(LogService logService, long projectId) {
+    public static void seedIncidentLogs(LogService logService, long projectId) {
         logService.importLogs(projectId, new ImportLogsRequest(List.of(
                 new LogEntryRequest("order-service", "ERROR", "t-1001", "com.demo.order.OrderService",
                         "Cannot invoke \"CouponInfo.getDiscountAmount()\" because \"coupon\" is null",

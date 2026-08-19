@@ -17,6 +17,9 @@ public enum ToolPermission {
     KNOWLEDGE_INDEX_WRITE,
     /** Persist generated test cases. */
     TEST_CASE_WRITE,
+    /** Run an installed skill script. Held only by agents a deployment deliberately trusts with
+     * downloaded code. */
+    SKILL_EXECUTE,
     /** Hand work to another agent. Delegation reads nothing itself; the specialist is authorised
      * against its own scope when it runs. */
     AGENT_DELEGATE

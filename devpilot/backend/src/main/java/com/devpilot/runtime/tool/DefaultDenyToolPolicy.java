@@ -59,16 +59,24 @@ public class DefaultDenyToolPolicy implements ToolPolicy {
                     ToolErrorCode.PERMISSION_DENIED,
                     "Agent " + invocation.agentName() + " does not hold " + definition.requiredPermission());
         }
-        if (definition.sideEffect() == SideEffectLevel.MUTATING) {
-            if (!scope.allowMutating() || !mutatingAllowList.contains(definition.name())) {
-                return ToolPolicyDecision.deny(
-                        ToolErrorCode.PERMISSION_DENIED,
-                        "Tool " + definition.name() + " changes state and is not allowed in this deployment");
-            }
+        if (definition.sideEffect() == SideEffectLevel.MUTATING && !scope.allowMutating()) {
+            return ToolPolicyDecision.deny(
+                    ToolErrorCode.PERMISSION_DENIED,
+                    "Tool " + definition.name() + " changes state and this agent may not mutate");
         }
         if (definition.requiresApproval()) {
+            // A tool that asks for approval is gated by the approval itself, not by the deployment
+            // allow list. That is what lets dynamically installed skills exist at all: their names
+            // cannot be known in advance, so a human decision per session takes the place of a
+            // configured name.
             return ToolPolicyDecision.requireApproval(
                     "Tool " + definition.name() + " needs human approval for these exact arguments");
+        }
+        if (definition.sideEffect() == SideEffectLevel.MUTATING
+                && !mutatingAllowList.contains(definition.name())) {
+            return ToolPolicyDecision.deny(
+                    ToolErrorCode.PERMISSION_DENIED,
+                    "Tool " + definition.name() + " changes state and is not allowed in this deployment");
         }
         return ToolPolicyDecision.allow();
     }
