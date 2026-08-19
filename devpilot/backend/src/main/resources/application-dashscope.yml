@@ -1,0 +1,24 @@
+# Enables the DashScope chat model. Activate together with your usual profile, for example:
+#
+#   mvn spring-boot:run "-Dspring-boot.run.profiles=dev,dashscope"
+#
+# DASHSCOPE_API_KEY must be set; the key is read from the environment and never written to
+# configuration, logs or session events.
+spring:
+  autoconfigure:
+    # Only the chat model is re-enabled. Image, video, audio, rerank and the agent API are not used
+    # by DevPilot; embedding is switched on when the knowledge base arrives in Phase 7.
+    exclude:
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAgentAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeImageAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeVideoAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioSpeechAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioTranscriptionAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeRerankAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeEmbeddingAutoConfiguration
+  ai:
+    dashscope:
+      api-key: ${DASHSCOPE_API_KEY}
+      chat:
+        options:
+          model: ${CHAT_MODEL:qwen-plus}

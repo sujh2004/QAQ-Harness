@@ -1,0 +1,29 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+# The demo repository ships a fake .env on purpose: it proves the code tools refuse it.
+!demo-project/**/.env
+**/application-dev.yml
+**/application-local.yml
+
+# Java
+backend/target/
+.m2/
+*.log
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.npm-cache/
+
+# IDE and OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Runtime data
+data/

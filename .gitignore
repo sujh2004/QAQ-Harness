@@ -1,0 +1,11 @@
+# 架构参考项目，不纳入本仓库版本管理。
+# 规格书 0.1 节：deepseek-harness-master 只是架构参考与行为样例，不是 DevPilot 的运行时依赖，
+# 也不应被修改。如果确实需要一起提交，删掉下面这一行即可。
+deepseek-harness-master/
+
+# IDE 与操作系统
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: order-demo
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/order_demo
+    username: order
+    password: order
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 30000
+
+server:
+  port: 9090
+
+logging:
+  level:
+    com.demo: INFO

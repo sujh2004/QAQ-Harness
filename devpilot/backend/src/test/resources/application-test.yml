@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:devpilot;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;LOCK_TIMEOUT=10000
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema-h2.sql
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+  runtime:
+    recovery:
+      # Contract tests drive recovery explicitly instead of relying on startup timing.
+      enabled: false

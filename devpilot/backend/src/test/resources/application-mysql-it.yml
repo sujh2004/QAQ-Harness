@@ -1,0 +1,13 @@
+spring:
+  sql:
+    init:
+      # The MySQL container applies sql/schema.sql when it starts, so Spring must not run the H2 script.
+      mode: never
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+  runtime:
+    recovery:
+      enabled: false

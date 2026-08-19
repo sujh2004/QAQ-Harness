@@ -1,0 +1,27 @@
+# DevPilot 标准 Agent 组合。
+#
+# 这份文件决定每个 Agent 的人设、模型路由、步数预算与可见 Tool。
+# 作用域只能收窄：这里列出的 Tool 与权限必须是应用已注册能力的子集，
+# 运行时会校验，试图扩权的 profile 会让应用启动失败。
+#
+# 执行时 ToolPolicy 仍会二次鉴权，可见不等于可执行。
+
+version: standard@1
+
+agents:
+  debug_agent:
+    displayName: 调试助手
+    description: 通过检索代码与日志定位研发问题，适用于故障排查与代码定位
+    promptFile: agents/debug_agent.md
+    modelRoute: chat.default
+    maxSteps: 6
+    tools:
+      - listFiles
+      - searchCode
+      - readCodeFile
+      - searchLogs
+      - getLogByTraceId
+      - getRecentErrorSummary
+    permissions:
+      - CODE_READ
+      - LOG_READ

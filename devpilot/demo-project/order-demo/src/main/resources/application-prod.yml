@@ -1,0 +1,7 @@
+# 这是演示用的假“生产配置”，只为验证 DevPilot 的敏感文件黑名单确实生效。
+# 代码工具必须拒绝读取本文件；其中不包含任何真实凭据。
+spring:
+  datasource:
+    url: jdbc:mysql://prod-db.internal:3306/order
+    username: order_prod
+    password: NOT-A-REAL-SECRET-demo-placeholder

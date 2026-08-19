@@ -1,0 +1,90 @@
+spring:
+  application:
+    name: devpilot-backend
+  autoconfigure:
+    # The DashScope auto-configurations fail hard when no API key is present, which would stop the
+    # whole application — including the read-only APIs that need no model. They are therefore off by
+    # default and switched on by the "dashscope" profile, which also supplies the key.
+    exclude:
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeChatAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAgentAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeImageAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeVideoAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioSpeechAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioTranscriptionAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeRerankAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeEmbeddingAutoConfiguration
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3307/devpilot?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${DB_USERNAME:devpilot}
+    password: ${DB_PASSWORD:devpilot}
+  jackson:
+    default-property-inclusion: always
+    time-zone: Asia/Shanghai
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  ai:
+    chat-model: ${CHAT_MODEL:qwen-plus}
+    embedding-model: ${EMBEDDING_MODEL:text-embedding-v3}
+  repository:
+    # Relative project repository paths resolve against this directory.
+    base-dir: ${APP_REPOSITORY_BASE_DIR:${user.dir}}
+    max-file-bytes: 262144
+    max-read-lines: 2000
+    # Never opened by the code tools, whatever a model asks for.
+    # These are matched against the lower-cased file name, not the path, so a glob must not carry a
+    # directory prefix: "**/.env" would never match a file called ".env".
+    denied-file-patterns:
+      - ".env"
+      - ".env.*"
+      - "*.key"
+      - "*.pem"
+      - "*.p12"
+      - "*.jks"
+      - "application-prod.yml"
+      - "application-prod.yaml"
+      - "application-prod.properties"
+      - "credentials.*"
+      - "id_rsa*"
+      - "*.pfx"
+    # Only these extensions may be listed, searched or read.
+    searchable-extensions:
+      - java
+      - kt
+      - xml
+      - yml
+      - yaml
+      - properties
+      - sql
+      - md
+      - json
+      - ts
+      - js
+      - vue
+      - gradle
+      - txt
+  runtime:
+    recovery:
+      # Closes turns a previous process left running instead of showing them as in progress.
+      enabled: ${RUNTIME_RECOVERY_ENABLED:true}
+    profile:
+      version: ${AGENT_PROFILE_VERSION:standard@1}
+    tool:
+      default-timeout: 30s
+      max-result-items: 100
+      max-result-bytes: 65536
+      max-concurrent-executions: 8
+      # The MVP is read-only. Phase 5 adds saveTestCases and the knowledge index writer here.
+      mutating-allow-list: []
+
+logging:
+  level:
+    root: INFO
+    com.devpilot: INFO

@@ -1,0 +1,14 @@
+# Copy this file to application-dev.yml for local-only overrides.
+spring:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3307/devpilot?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: devpilot
+    password: devpilot
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+
+# Phase 0 does not call an AI provider. Keep keys in environment variables only.
+# DASHSCOPE_API_KEY=

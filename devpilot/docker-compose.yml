@@ -1,0 +1,23 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: devpilot-mysql
+    environment:
+      MYSQL_DATABASE: devpilot
+      MYSQL_USER: devpilot
+      MYSQL_PASSWORD: devpilot
+      MYSQL_ROOT_PASSWORD: devpilot-root
+      TZ: Asia/Shanghai
+    ports:
+      - "3307:3306"
+    volumes:
+      - devpilot-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-udevpilot", "-pdevpilot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+
+volumes:
+  devpilot-mysql-data:
