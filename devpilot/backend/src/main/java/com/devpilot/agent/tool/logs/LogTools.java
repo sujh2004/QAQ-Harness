@@ -69,10 +69,10 @@ public class LogTools {
 
     private ToolResult searchLogs(ToolExecutionContext<SearchLogsArguments> context) {
         SearchLogsArguments arguments = context.arguments();
-        AgentToolSupport.requireSameProject(context, arguments.projectId());
+        Long projectId = AgentToolSupport.resolveProjectId(context, arguments.projectId());
 
         List<LogEntryResponse> entries = logService.search(
-                        arguments.projectId(),
+                        projectId,
                         arguments.serviceName(),
                         arguments.level(),
                         arguments.keyword(),
@@ -90,10 +90,10 @@ public class LogTools {
 
     private ToolResult getLogByTraceId(ToolExecutionContext<TraceLogsArguments> context) {
         TraceLogsArguments arguments = context.arguments();
-        AgentToolSupport.requireSameProject(context, arguments.projectId());
+        Long projectId = AgentToolSupport.resolveProjectId(context, arguments.projectId());
 
         List<LogToolEntry> lines = logService.search(
-                        arguments.projectId(), null, null, null, arguments.traceId(),
+                        projectId, null, null, null, arguments.traceId(),
                         null, null, 0, arguments.limit())
                 .items()
                 .stream()
@@ -106,10 +106,10 @@ public class LogTools {
 
     private ToolResult getRecentErrorSummary(ToolExecutionContext<ErrorSummaryArguments> context) {
         ErrorSummaryArguments arguments = context.arguments();
-        AgentToolSupport.requireSameProject(context, arguments.projectId());
+        Long projectId = AgentToolSupport.resolveProjectId(context, arguments.projectId());
 
         List<ErrorSummaryResponse> groups =
-                logService.summarizeErrors(arguments.projectId(), arguments.hours());
+                logService.summarizeErrors(projectId, arguments.hours());
         long total = groups.stream().mapToLong(ErrorSummaryResponse::occurrences).sum();
 
         StringBuilder summary = new StringBuilder("Grouped ").append(total).append(" error(s) into ")
@@ -160,7 +160,6 @@ public class LogTools {
 
     private static ToolDefinition searchLogsDefinition() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        properties.put("projectId", AgentToolSupport.field("integer", "Project to read"));
         properties.put("serviceName", AgentToolSupport.field(
                 "string", "Emitting service, for example order-service"));
         properties.put("level", AgentToolSupport.field(
@@ -178,7 +177,7 @@ public class LogTools {
                 .version(VERSION)
                 .description("Search the recorded system logs of a project by service, level, keyword "
                         + "and time range.")
-                .inputSchema(AgentToolSupport.objectSchema(properties, List.of("projectId")))
+                .inputSchema(AgentToolSupport.objectSchema(properties, List.of()))
                 .sideEffect(SideEffectLevel.READ_ONLY)
                 .concurrency(ConcurrencyMode.CONCURRENCY_SAFE)
                 .timeout(Duration.ofSeconds(10))
@@ -191,7 +190,6 @@ public class LogTools {
 
     private static ToolDefinition traceDefinition() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        properties.put("projectId", AgentToolSupport.field("integer", "Project to read"));
         properties.put("traceId", AgentToolSupport.field(
                 "string", "Trace identifier shared by the lines of one request"));
         properties.put("limit", AgentToolSupport.boundedInteger(
@@ -200,7 +198,7 @@ public class LogTools {
         return ToolDefinition.builder(GET_LOG_BY_TRACE_ID, TraceLogsArguments.class)
                 .version(VERSION)
                 .description("Fetch every recorded log line of one request by its trace id.")
-                .inputSchema(AgentToolSupport.objectSchema(properties, List.of("projectId", "traceId")))
+                .inputSchema(AgentToolSupport.objectSchema(properties, List.of("traceId")))
                 .sideEffect(SideEffectLevel.READ_ONLY)
                 .concurrency(ConcurrencyMode.CONCURRENCY_SAFE)
                 .timeout(Duration.ofSeconds(10))
@@ -213,7 +211,6 @@ public class LogTools {
 
     private static ToolDefinition summaryDefinition() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        properties.put("projectId", AgentToolSupport.field("integer", "Project to read"));
         properties.put("hours", AgentToolSupport.boundedInteger(
                 "Size of the window in hours, default 24", 1, 720));
 
@@ -222,7 +219,7 @@ public class LogTools {
                 .description("Group the recent errors of a project by service and exception type, with "
                         + "occurrence counts and a sample message, so an incident can be understood "
                         + "without reading every line.")
-                .inputSchema(AgentToolSupport.objectSchema(properties, List.of("projectId")))
+                .inputSchema(AgentToolSupport.objectSchema(properties, List.of()))
                 .sideEffect(SideEffectLevel.READ_ONLY)
                 .concurrency(ConcurrencyMode.CONCURRENCY_SAFE)
                 .timeout(Duration.ofSeconds(10))

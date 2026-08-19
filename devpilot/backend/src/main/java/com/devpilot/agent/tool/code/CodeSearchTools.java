@@ -71,8 +71,11 @@ public class CodeSearchTools {
     }
 
     private ToolResult listFiles(ToolExecutionContext<ListFilesRequest> context) {
-        ListFilesRequest arguments = context.arguments();
-        AgentToolSupport.requireSameProject(context, arguments.projectId());
+        ListFilesRequest arguments = new ListFilesRequest(
+                AgentToolSupport.resolveProjectId(context, context.arguments().projectId()),
+                context.arguments().relativePath(),
+                context.arguments().maxDepth(),
+                context.arguments().limit());
         ListFilesResult result = translate(() -> repository.listFiles(arguments));
 
         String location = arguments.relativePath().isEmpty() ? "repository root" : arguments.relativePath();
@@ -84,8 +87,11 @@ public class CodeSearchTools {
     }
 
     private ToolResult searchCode(ToolExecutionContext<SearchCodeRequest> context) {
-        SearchCodeRequest arguments = context.arguments();
-        AgentToolSupport.requireSameProject(context, arguments.projectId());
+        SearchCodeRequest arguments = new SearchCodeRequest(
+                AgentToolSupport.resolveProjectId(context, context.arguments().projectId()),
+                context.arguments().keyword(),
+                context.arguments().filePattern(),
+                context.arguments().limit());
         SearchCodeResult result = translate(() -> repository.searchCode(arguments));
 
         StringBuilder summary = new StringBuilder("Found ")
@@ -100,8 +106,11 @@ public class CodeSearchTools {
     }
 
     private ToolResult readCodeFile(ToolExecutionContext<ReadCodeFileRequest> context) {
-        ReadCodeFileRequest arguments = context.arguments();
-        AgentToolSupport.requireSameProject(context, arguments.projectId());
+        ReadCodeFileRequest arguments = new ReadCodeFileRequest(
+                AgentToolSupport.resolveProjectId(context, context.arguments().projectId()),
+                context.arguments().relativePath(),
+                context.arguments().startLine(),
+                context.arguments().endLine());
         ReadCodeFileResult result = translate(() -> repository.readFile(arguments));
 
         StringBuilder summary = new StringBuilder(result.filePath())
@@ -137,7 +146,6 @@ public class CodeSearchTools {
 
     private static ToolDefinition listFilesDefinition() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        properties.put("projectId", AgentToolSupport.field("integer", "Project to read"));
         properties.put("relativePath", AgentToolSupport.field(
                 "string", "Directory relative to the repository root; omit for the root"));
         properties.put("maxDepth", AgentToolSupport.boundedInteger(
@@ -148,7 +156,7 @@ public class CodeSearchTools {
         return ToolDefinition.builder(LIST_FILES, ListFilesRequest.class)
                 .version(VERSION)
                 .description("List files under a directory of the project source repository.")
-                .inputSchema(AgentToolSupport.objectSchema(properties, List.of("projectId")))
+                .inputSchema(AgentToolSupport.objectSchema(properties, List.of()))
                 .sideEffect(SideEffectLevel.READ_ONLY)
                 .concurrency(ConcurrencyMode.CONCURRENCY_SAFE)
                 .timeout(Duration.ofSeconds(10))
@@ -161,7 +169,6 @@ public class CodeSearchTools {
 
     private static ToolDefinition searchCodeDefinition() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        properties.put("projectId", AgentToolSupport.field("integer", "Project to read"));
         properties.put("keyword", AgentToolSupport.field(
                 "string", "Literal text to look for; matching is case-insensitive"));
         properties.put("filePattern", AgentToolSupport.field(
@@ -173,7 +180,7 @@ public class CodeSearchTools {
                 .version(VERSION)
                 .description("Search the project source repository for a keyword and return matching "
                         + "lines with their file path, line number and surrounding context.")
-                .inputSchema(AgentToolSupport.objectSchema(properties, List.of("projectId", "keyword")))
+                .inputSchema(AgentToolSupport.objectSchema(properties, List.of("keyword")))
                 .sideEffect(SideEffectLevel.READ_ONLY)
                 .concurrency(ConcurrencyMode.CONCURRENCY_SAFE)
                 .timeout(Duration.ofSeconds(20))
@@ -186,7 +193,6 @@ public class CodeSearchTools {
 
     private static ToolDefinition readCodeFileDefinition() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        properties.put("projectId", AgentToolSupport.field("integer", "Project to read"));
         properties.put("relativePath", AgentToolSupport.field(
                 "string", "File relative to the repository root"));
         properties.put("startLine", AgentToolSupport.field("integer", "One-based first line, default 1"));
@@ -197,7 +203,7 @@ public class CodeSearchTools {
                 .version(VERSION)
                 .description("Read a line range of one file in the project source repository.")
                 .inputSchema(AgentToolSupport.objectSchema(
-                        properties, List.of("projectId", "relativePath")))
+                        properties, List.of("relativePath")))
                 .sideEffect(SideEffectLevel.READ_ONLY)
                 .concurrency(ConcurrencyMode.CONCURRENCY_SAFE)
                 .timeout(Duration.ofSeconds(10))

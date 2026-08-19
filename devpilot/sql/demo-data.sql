@@ -2,6 +2,9 @@
 -- Reproduces the two incident scenarios from the specification so the platform can be
 -- demonstrated without a live production system.
 --
+-- Log times are anchored to CURRENT_TIMESTAMP rather than fixed dates, so the two incidents are
+-- always "recent" whenever the demo is shown and the default query windows find them.
+--
 -- repository_path is relative and resolved against app.repository.base-dir, which defaults to the
 -- backend working directory. Running the backend from devpilot/backend therefore resolves
 -- ../demo-project/order-demo to devpilot/demo-project/order-demo. The demo repository itself is
@@ -22,47 +25,47 @@ INSERT INTO system_log
     (project_id, service_name, level, trace_id, logger, message, exception_type, stack_trace, log_time)
 VALUES
     (1, 'order-service', 'INFO', 't-1001', 'com.demo.order.OrderController',
-     'createOrder received request couponCode=SUMMER50', NULL, NULL, '2026-08-16 10:31:01'),
+     'createOrder received request couponCode=SUMMER50', NULL, NULL, TIMESTAMPADD(MINUTE, -184, CURRENT_TIMESTAMP)),
     (1, 'order-service', 'WARN', 't-1001', 'com.demo.order.CouponClient',
-     'coupon service responded 503, returning null', NULL, NULL, '2026-08-16 10:31:02'),
+     'coupon service responded 503, returning null', NULL, NULL, TIMESTAMPADD(MINUTE, -183, CURRENT_TIMESTAMP)),
     (1, 'order-service', 'ERROR', 't-1001', 'com.demo.order.OrderService',
      'Cannot invoke "CouponInfo.getDiscountAmount()" because "coupon" is null',
      'java.lang.NullPointerException',
      'java.lang.NullPointerException: Cannot invoke "CouponInfo.getDiscountAmount()" because "coupon" is null
 	at com.demo.order.OrderService.createOrder(OrderService.java:86)
 	at com.demo.order.OrderController.create(OrderController.java:42)',
-     '2026-08-16 10:31:02'),
+     TIMESTAMPADD(MINUTE, -183, CURRENT_TIMESTAMP)),
     (1, 'order-service', 'ERROR', 't-1002', 'com.demo.order.OrderService',
      'Cannot invoke "CouponInfo.getDiscountAmount()" because "coupon" is null',
      'java.lang.NullPointerException',
      'java.lang.NullPointerException: Cannot invoke "CouponInfo.getDiscountAmount()" because "coupon" is null
 	at com.demo.order.OrderService.createOrder(OrderService.java:86)',
-     '2026-08-16 10:34:18'),
+     TIMESTAMPADD(MINUTE, -180, CURRENT_TIMESTAMP)),
     (1, 'order-service', 'ERROR', 't-1003', 'com.demo.order.OrderService',
      'Cannot invoke "CouponInfo.getDiscountAmount()" because "coupon" is null',
      'java.lang.NullPointerException',
      'java.lang.NullPointerException: Cannot invoke "CouponInfo.getDiscountAmount()" because "coupon" is null
 	at com.demo.order.OrderService.createOrder(OrderService.java:86)',
-     '2026-08-16 10:41:55'),
+     TIMESTAMPADD(MINUTE, -172, CURRENT_TIMESTAMP)),
     (1, 'coupon-service', 'ERROR', 't-1001', 'com.demo.coupon.CouponController',
      'coupon lookup failed, upstream cache unavailable', 'java.io.IOException',
      'java.io.IOException: cache node unreachable
 	at com.demo.coupon.CouponController.query(CouponController.java:37)',
-     '2026-08-16 10:31:02'),
+     TIMESTAMPADD(MINUTE, -183, CURRENT_TIMESTAMP)),
 
 -- Scenario 2: the connection pool is exhausted and queries time out.
     (1, 'order-service', 'WARN', 't-2001', 'com.zaxxer.hikari.pool.HikariPool',
      'HikariPool-1 - Connection is not available, request timed out after 30000ms', NULL, NULL,
-     '2026-08-17 21:12:40'),
+     TIMESTAMPADD(MINUTE, -94, CURRENT_TIMESTAMP)),
     (1, 'order-service', 'ERROR', 't-2001', 'com.demo.order.OrderMapper',
      'query listOrdersByUser timed out', 'java.sql.SQLTimeoutException',
      'java.sql.SQLTimeoutException: Timeout after 30000ms of waiting for a connection
 	at com.demo.order.OrderMapper.listOrdersByUser(OrderMapper.java:54)',
-     '2026-08-17 21:12:41'),
+     TIMESTAMPADD(MINUTE, -93, CURRENT_TIMESTAMP)),
     (1, 'order-service', 'ERROR', 't-2002', 'com.demo.order.OrderMapper',
      'query listOrdersByUser timed out', 'java.sql.SQLTimeoutException',
      'java.sql.SQLTimeoutException: Timeout after 30000ms of waiting for a connection
 	at com.demo.order.OrderMapper.listOrdersByUser(OrderMapper.java:54)',
-     '2026-08-17 21:13:09'),
+     TIMESTAMPADD(MINUTE, -88, CURRENT_TIMESTAMP)),
     (1, 'inventory-service', 'INFO', 't-2001', 'com.demo.inventory.InventoryService',
-     'stock reserved for orderId=90231', NULL, NULL, '2026-08-17 21:12:39');
+     'stock reserved for orderId=90231', NULL, NULL, TIMESTAMPADD(MINUTE, -95, CURRENT_TIMESTAMP));

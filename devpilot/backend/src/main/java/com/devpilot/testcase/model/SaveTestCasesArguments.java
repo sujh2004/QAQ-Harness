@@ -21,7 +21,7 @@ import java.util.List;
  * @param cases the cases to store
  */
 public record SaveTestCasesArguments(
-        @NotNull Long projectId,
+        Long projectId,
         @Size(max = 64) String sourceSessionId,
         @NotEmpty @Size(max = 20, message = "at most 20 cases per call") @Valid List<TestCaseInput> cases) {
 

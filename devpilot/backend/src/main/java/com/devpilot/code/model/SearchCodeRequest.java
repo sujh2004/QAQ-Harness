@@ -15,7 +15,7 @@ import jakarta.validation.constraints.Size;
  * @param limit maximum number of matches to return, defaults to 30
  */
 public record SearchCodeRequest(
-        @NotNull Long projectId,
+        Long projectId,
         @NotBlank @Size(max = 200) String keyword,
         @Size(max = 100) String filePattern,
         @Min(1) @Max(200) Integer limit) {

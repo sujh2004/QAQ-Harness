@@ -14,7 +14,7 @@ import jakarta.validation.constraints.Size;
  * @param limit maximum number of lines, at most 100, defaults to 50
  */
 public record TraceLogsArguments(
-        @NotNull Long projectId,
+        Long projectId,
         @NotBlank @Size(max = 100) String traceId,
         @Min(1) @Max(100) Integer limit) {
 

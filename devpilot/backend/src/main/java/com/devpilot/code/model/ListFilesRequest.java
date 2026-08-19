@@ -14,7 +14,7 @@ import jakarta.validation.constraints.Size;
  * @param limit maximum number of paths to return, defaults to 100
  */
 public record ListFilesRequest(
-        @NotNull Long projectId,
+        Long projectId,
         @Size(max = 500) String relativePath,
         @Min(1) @Max(10) Integer maxDepth,
         @Min(1) @Max(500) Integer limit) {

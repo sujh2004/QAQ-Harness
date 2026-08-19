@@ -15,10 +15,34 @@ public final class AgentToolSupport {
     }
 
     /**
-     * Refuses a call whose arguments name a different project than the session it runs in.
+     * Resolves the project a call may touch.
      *
-     * <p>The project of a session is decided by the runtime, not by the model. Without this check a
-     * model could read another team's repository or logs simply by changing a number.
+     * <p>The project comes from the session, never from the model. Asking a model to repeat an id
+     * it cannot verify only invites it to invent one — which is exactly what happens in practice —
+     * so {@code projectId} is not published in any tool schema. If a model supplies one anyway it
+     * must agree, which keeps the guard meaningful as defence in depth.
+     *
+     * @param context call context carrying the authoritative project
+     * @param suppliedProjectId project the arguments named, usually null
+     * @return the project this call may read
+     * @throws ToolExecutionException when the session has no project or the two disagree
+     */
+    public static Long resolveProjectId(ToolExecutionContext<?> context, Long suppliedProjectId) {
+        Long sessionProject = context.projectId();
+        if (sessionProject == null) {
+            throw new ToolExecutionException(
+                    ToolErrorCode.PERMISSION_DENIED, "This session is not bound to a project");
+        }
+        if (suppliedProjectId != null && !sessionProject.equals(suppliedProjectId)) {
+            throw new ToolExecutionException(
+                    ToolErrorCode.PERMISSION_DENIED,
+                    "This session may only read project " + sessionProject);
+        }
+        return sessionProject;
+    }
+
+    /**
+     * Refuses a call whose arguments name a different project than the session it runs in.
      *
      * @param context call context carrying the authoritative project
      * @param argumentProjectId project the arguments asked for

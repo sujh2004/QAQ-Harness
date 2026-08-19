@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
  * @param limit maximum number of lines, at most 100, defaults to 50
  */
 public record SearchLogsArguments(
-        @NotNull Long projectId,
+        Long projectId,
         @Size(max = 100) String serviceName,
         @Pattern(regexp = "(?i)TRACE|DEBUG|INFO|WARN|ERROR|FATAL",
                 message = "must be one of TRACE, DEBUG, INFO, WARN, ERROR, FATAL") String level,

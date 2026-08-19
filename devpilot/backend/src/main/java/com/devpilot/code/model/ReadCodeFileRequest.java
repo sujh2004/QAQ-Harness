@@ -14,7 +14,7 @@ import jakarta.validation.constraints.Size;
  * @param endLine one-based last line to return inclusive, defaults to 200 lines after the start
  */
 public record ReadCodeFileRequest(
-        @NotNull Long projectId,
+        Long projectId,
         @NotBlank @Size(max = 500) String relativePath,
         @Min(1) Integer startLine,
         @Min(1) Integer endLine) {

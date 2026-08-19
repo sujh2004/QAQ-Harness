@@ -10,7 +10,7 @@ import jakarta.validation.constraints.NotNull;
  * @param projectId owning project; must match the project of the calling session
  * @param hours size of the window in hours, defaults to 24
  */
-public record ErrorSummaryArguments(@NotNull Long projectId, @Min(1) @Max(720) Integer hours) {
+public record ErrorSummaryArguments(Long projectId, @Min(1) @Max(720) Integer hours) {
 
     /** Applies the default window so a model does not have to supply it. */
     public ErrorSummaryArguments {

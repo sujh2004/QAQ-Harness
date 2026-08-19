@@ -59,10 +59,10 @@ public class TestTools {
 
     private ToolResult saveTestCases(ToolExecutionContext<SaveTestCasesArguments> context) {
         SaveTestCasesArguments arguments = context.arguments();
-        AgentToolSupport.requireSameProject(context, arguments.projectId());
+        Long projectId = AgentToolSupport.resolveProjectId(context, arguments.projectId());
 
         List<TestCaseResponse> saved = testCaseService.save(new SaveTestCasesArguments(
-                arguments.projectId(),
+                projectId,
                 // The session is decided by the runtime, not by whatever the model claims.
                 context.sessionId(),
                 arguments.cases()));
@@ -91,7 +91,6 @@ public class TestTools {
         testCase.put("required", List.of("title", "steps", "expectedResult"));
 
         Map<String, Object> properties = new LinkedHashMap<>();
-        properties.put("projectId", AgentToolSupport.field("integer", "Project the cases belong to"));
         properties.put("cases", Map.of(
                 "type", "array",
                 "description", "At most 20 cases per call",
@@ -101,7 +100,7 @@ public class TestTools {
                 .version(VERSION)
                 .description("Persist the structured test cases you designed so the team can review "
                         + "and run them. Only call this once the cases are final.")
-                .inputSchema(AgentToolSupport.objectSchema(properties, List.of("projectId", "cases")))
+                .inputSchema(AgentToolSupport.objectSchema(properties, List.of("cases")))
                 .sideEffect(SideEffectLevel.MUTATING)
                 .concurrency(ConcurrencyMode.EXCLUSIVE)
                 .timeout(Duration.ofSeconds(15))
