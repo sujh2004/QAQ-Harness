@@ -2,7 +2,7 @@
 
 DevPilot 是面向企业研发与故障分析的多 Agent 平台。本目录按《DevPilot 企业研发多 Agent 平台实施规格书》从 Phase 0 开始实现。
 
-当前状态：Phase 9 完成，MVP 闭环。Spring Boot 后端 + Vue 3 前端共七个页面；追加式 `session_event` 事件流、turn/step 状态机、取消与重启恢复、Tool 注册表与执行管线；项目 CRUD、日志查询、会话与消息投影、测试用例；七个证据工具、五个委派工具与两个知识检索工具、`demo-project/order-demo` 演示仓库与两套故障剧情；Supervisor 与五个专业 Agent；Skill 市场、沙箱与安装审批链；per-project 向量知识库；SSE 流式对话、Agent 轨迹实时展示与 `Last-Event-ID` 断线续传；Docker 全栈一键启动。191 个后端测试全绿，五个演示问题真实跑通——见[测试报告](docs/test-report.md)。没有伪造接口。
+当前状态：Phase 9 完成，MVP 闭环。Spring Boot 后端 + Vue 3 前端共八个页面；追加式 `session_event` 事件流、turn/step 状态机、取消与重启恢复、Tool 注册表与执行管线；项目 CRUD、日志查询、会话与消息投影、测试用例；七个证据工具、五个委派工具与两个知识检索工具、`demo-project/order-demo` 演示仓库与两套故障剧情；Supervisor 与五个专业 Agent；Skill 市场、沙箱与安装审批链；per-project 向量知识库；SSE 流式对话、Agent 轨迹实时展示与 `Last-Event-ID` 断线续传；Docker 全栈一键启动。195 个后端测试全绿，五个演示问题真实跑通——见[测试报告](docs/test-report.md)。没有伪造接口。
 
 ## 三分钟跑起来
 
@@ -182,8 +182,35 @@ Tool 只能经 `ToolRegistry` 调用，目前没有对外的 HTTP 入口——Ph
 
 Supervisor 的工具就是「问某个专业 Agent」（`askCodeAgent` 等），因此委派复用同一条 Tool 执行管线，专业 Agent 作为嵌套 run 出现，审计轨迹形成树。
 
-## 知识库（Phase 7）
+## 技能市场
 
+Agent 的能力可以在运行时扩展：从一个 HTTPS 清单安装脚本包，装完就是一个新工具。这条路径的每一步都是**人的决定**，模型一步也插不上手。
+
+```
+GET    /api/v1/skills/marketplace          # 浏览，什么也不安装
+POST   /api/v1/skills                      # 安装：写盘并记录 sha256
+GET    /api/v1/projects/{id}/skills        # 本项目启用了哪些
+POST   /api/v1/projects/{id}/skills        # 启用 / 停用
+POST   /api/v1/sessions/{id}/skill-approvals   # 在这次会话里批准执行
+```
+
+**三道人工闸门**，缺一不可：
+
+1. **安装** — 有人从市场装下来。清单只能走 HTTPS：能被中途改写的市场就是一条代码执行通道。安装时校验运行时白名单、每个文件路径必须留在包内、入口必须是包里真实存在的文件，并记录内容的 SHA-256。
+2. **项目启用** — 装了不等于能用。没启用时，**Agent 连这个工具的存在都看不到**——模型无法拒绝使用一个从没被展示过的东西。
+3. **会话审批** — Agent 要执行它时，仍然需要人在这次对话里点头。审批只对这一个会话有效。
+
+profile 里的 `allowSkills` 只声明「这类 Agent 可以用技能」——技能是运行时装的，profile 无法预先写出名字。装哪些由人按项目决定，跑不跑由人按会话决定。
+
+**沙箱六道控制**：解释器白名单（不在名单上的运行时根本起不来）、入口路径两次校验、清空环境变量后只注入白名单项（模型密钥与数据库口令都拿不到）、参数走 stdin JSON 而不进命令行、每次执行给一个空的临时工作目录、超时即销毁整棵进程树并限制输出大小。沙箱同时把子进程的 I/O 编码钉死为 UTF-8，否则宿主机的代码页会把中文输出变成乱码交给模型当证据。
+
+仓库自带两个可审阅的演示技能（`demo-data/skills/`）：`stacktrace-digest` 把 Java 堆栈压成异常链与最上层应用帧，`log-burst-window` 把时间戳画成分钟直方图定位爆发窗口。它们通过 GitHub raw 以 HTTPS 发布，`SKILL_MARKETPLACE_URL` 默认指向那份清单。改了脚本后重新生成清单：
+
+```powershell
+python scripts/build-marketplace.py
+```
+
+## 知识库（Phase 7）
 每个项目一个独立向量库（`data/vector/project-{id}.json`），物理隔离而不是元数据过滤——检索结果永远只来自本项目。文档按 Markdown 标题切块、邻块重叠，每个段落携带出处（文档名、类型）与相关度分数；`similarityThreshold` 以下的命中按「未找到」处理，工具层明确告诉模型**不要用通用知识补充**。
 
 导入与检索：
@@ -255,7 +282,7 @@ npm run build
 
 默认前端地址为 `http://localhost:5173`，后端地址通过 `VITE_API_BASE_URL` 配置。
 
-七个页面：项目列表、项目概览（仓库校验与错误聚合）、**智能对话**（SSE 流式回答 + Agent 轨迹树）、**知识库**（导入、检索、重建索引）、日志检索、**测试用例**（Agent 生成并落库的回归方案）、会话与事件流。对话页与知识库页需要后端激活 `dashscope` profile；其余页面不需要任何密钥。
+八个页面：项目列表、项目概览（仓库校验与错误聚合）、**智能对话**（SSE 流式回答 + Agent 轨迹树）、**知识库**（导入、检索、重建索引）、日志检索、**测试用例**（Agent 生成并落库的回归方案）、**技能市场**（浏览、审阅源码、安装、按项目启停）、会话与事件流。对话页与知识库页需要后端激活 `dashscope` profile；其余页面不需要任何密钥。
 
 ## 配置
 

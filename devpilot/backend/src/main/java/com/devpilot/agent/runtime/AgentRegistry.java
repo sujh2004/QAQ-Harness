@@ -3,14 +3,18 @@ package com.devpilot.agent.runtime;
 import com.devpilot.agent.config.AgentDefinition;
 import com.devpilot.agent.config.AgentProfile;
 import com.devpilot.agent.config.AgentProfileLoader;
+import com.devpilot.agent.tool.skill.SkillTools;
 import com.devpilot.runtime.model.ModelToolSpec;
 import com.devpilot.runtime.prompt.PromptLibrary;
 import com.devpilot.runtime.tool.ToolDefinition;
 import com.devpilot.runtime.tool.ToolPermission;
 import com.devpilot.runtime.tool.ToolRegistry;
 import com.devpilot.runtime.tool.ToolScope;
+import com.devpilot.skill.model.SkillResponse;
+import com.devpilot.skill.service.SkillService;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,6 +32,7 @@ public class AgentRegistry {
     private final AgentProfile profile;
     private final PromptLibrary promptLibrary;
     private final ToolRegistry toolRegistry;
+    private final SkillService skillService;
 
     /**
      * Creates the registry.
@@ -35,12 +40,17 @@ public class AgentRegistry {
      * @param profileLoader loaded agent profile
      * @param promptLibrary persona loader
      * @param toolRegistry registry of published tools
+     * @param skillService source of the skills a project has enabled
      */
     public AgentRegistry(
-            AgentProfileLoader profileLoader, PromptLibrary promptLibrary, ToolRegistry toolRegistry) {
+            AgentProfileLoader profileLoader,
+            PromptLibrary promptLibrary,
+            ToolRegistry toolRegistry,
+            SkillService skillService) {
         this.profile = profileLoader.profile();
         this.promptLibrary = promptLibrary;
         this.toolRegistry = toolRegistry;
+        this.skillService = skillService;
     }
 
     /** @return version of the active profile */
@@ -69,7 +79,7 @@ public class AgentRegistry {
     }
 
     /**
-     * Computes the effective tool scope of an agent.
+     * Computes the effective tool scope of an agent, without any project-specific skills.
      *
      * @param agent agent declaration
      * @return application scope narrowed by the agent profile
@@ -77,9 +87,45 @@ public class AgentRegistry {
      *     or permission the application does not grant
      */
     public ToolScope scopeOf(AgentDefinition agent) {
+        return scopeOf(agent, null);
+    }
+
+    /**
+     * Computes the effective tool scope of an agent inside one project.
+     *
+     * <p>Skills are installed while the application runs, so a profile cannot name them: it can
+     * only declare, via {@code allowSkills}, whether this agent is the kind of agent that may use
+     * them at all. Which skills exist for this project is a separate human decision, and running
+     * one still needs approval inside the session. Three decisions, none of them the model's.
+     *
+     * @param agent agent declaration
+     * @param projectId project the turn runs in, null to exclude skills entirely
+     * @return application scope narrowed by the agent profile, plus the project's enabled skills
+     * @throws com.devpilot.runtime.tool.ToolScopeViolationException when the profile asks for a tool
+     *     or permission the application does not grant
+     */
+    public ToolScope scopeOf(AgentDefinition agent, Long projectId) {
         ToolScope application = applicationScope();
-        ToolScope declared =
-                new ToolScope(agent.tools(), agent.permissions(), agent.allowMutating());
+        Set<String> tools = new LinkedHashSet<>(agent.tools());
+        Set<ToolPermission> permissions = new LinkedHashSet<>(agent.permissions());
+        boolean allowMutating = agent.allowMutating();
+
+        if (agent.allowSkills() && projectId != null) {
+            List<SkillResponse> enabled = skillService.enabledFor(projectId);
+            if (!enabled.isEmpty()) {
+                enabled.forEach(skill -> tools.add(SkillTools.toolNameOf(skill.skillKey())));
+                permissions.add(ToolPermission.SKILL_EXECUTE);
+                // A skill runs a real script, so it is declared MUTATING and the policy refuses it
+                // unless the scope permits mutation. Granting that here rather than in the profile
+                // keeps the YAML honest: "allowSkills" means "may run the skills a person enabled",
+                // not "may write anything". What bounds it is visibility — the only mutating tools
+                // this scope can see are those skills, because the profile's own tool list names
+                // none, and every one of them still needs approval inside the session.
+                allowMutating = true;
+            }
+        }
+
+        ToolScope declared = new ToolScope(tools, permissions, allowMutating);
         declared.requireNarrowerThan(application);
         return application.narrow(declared);
     }

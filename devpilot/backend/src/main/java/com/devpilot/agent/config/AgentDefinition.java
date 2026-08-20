@@ -20,6 +20,9 @@ import java.util.Set;
  * @param permissions capabilities this agent holds
  * @param allowMutating whether this agent may run tools that change state; still subject to the
  *     policy allow list at execution time
+ * @param allowSkills whether this agent may see the skills a person enabled for the project;
+ *     skills are installed at runtime, so a profile can only grant the category — which specific
+ *     skills exist is decided per project, and running one still needs approval in the session
  */
 public record AgentDefinition(
         String name,
@@ -30,7 +33,8 @@ public record AgentDefinition(
         int maxSteps,
         Set<String> tools,
         Set<ToolPermission> permissions,
-        boolean allowMutating) {
+        boolean allowMutating,
+        boolean allowSkills) {
 
     /** Normalises the collections into immutable copies. */
     public AgentDefinition {

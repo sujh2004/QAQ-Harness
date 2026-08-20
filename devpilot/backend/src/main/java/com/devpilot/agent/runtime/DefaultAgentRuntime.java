@@ -80,7 +80,7 @@ public class DefaultAgentRuntime implements AgentRuntime {
             return new AgentTurnResult(null, RunStatus.CANCELLED, null, "Turn is no longer running");
         }
 
-        ToolScope scope = agentRegistry.scopeOf(agent);
+        ToolScope scope = agentRegistry.scopeOf(agent, request.projectId());
         String systemPrompt = agentRegistry.systemPrompt(agent);
         String profileVersion = agentRegistry.profileVersion();
 

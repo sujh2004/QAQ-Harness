@@ -61,6 +61,18 @@ public class SkillSandbox {
             Executors.newCachedThreadPool(Thread.ofPlatform().name("skill-io-", 0).daemon().factory());
 
     /**
+     * Forces UTF-8 on the child regardless of the host's code page.
+     *
+     * <p>Part of the sandbox contract rather than of any one skill: arguments go in as UTF-8 JSON
+     * and output comes back as UTF-8 text, so a skill author never has to think about encoding.
+     */
+    private static final Map<String, String> UTF8_ENVIRONMENT = Map.of(
+            "PYTHONIOENCODING", "utf-8",
+            "PYTHONUTF8", "1",
+            "LANG", "C.UTF-8",
+            "LC_ALL", "C.UTF-8");
+
+    /**
      * Creates the sandbox.
      *
      * @param appProperties application configuration supplying the limits and allow lists
@@ -86,6 +98,12 @@ public class SkillSandbox {
                 }
             });
         }
+        // The sandbox reads stdout as UTF-8, so it has to make the child write UTF-8. Interpreters
+        // otherwise follow the platform code page — on a Chinese Windows host that turns every
+        // non-ASCII character of a skill's output into mojibake, and the mangled text would be fed
+        // straight to the model as evidence. These are set by the sandbox, not inherited, so they
+        // reveal nothing about the host.
+        environment.putAll(UTF8_ENVIRONMENT);
         this.environmentAllowList = Map.copyOf(environment);
     }
 

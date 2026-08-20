@@ -20,7 +20,7 @@
 
 ## 2. 自动化测试
 
-`mvn test` 全量通过：**191 个测试，0 失败，0 错误**。契约测试全部使用脚本化的 Fake Provider，**不需要任何 API Key**——CI 不把模型的稳定性当作判定标准。
+`mvn test` 全量通过：**195 个测试，0 失败，0 错误**。契约测试全部使用脚本化的 Fake Provider，**不需要任何 API Key**——CI 不把模型的稳定性当作判定标准。
 
 | 测试类 | 用例 | 覆盖的契约 |
 |---|---:|---|
@@ -40,8 +40,20 @@
 | KnowledgeBaseTest | 9 | 项目隔离、删除不可召回、无匹配话术 |
 | DocumentSplitterTest / ProjectVectorStoresTest | 6 | 切块边界、无 Embedding 时的降级 |
 | AgentRuntimeTest / SupervisorRoutingTest / AgentProfileTest | 20 | Agent 循环、委派嵌套、profile 收窄 |
-| SkillSandboxTest / SkillLifecycleTest | 17 | 沙箱六道控制、安装与审批链 |
+| SkillSandboxTest / SkillLifecycleTest | 20 | 沙箱六道控制与 UTF-8 输出、安装启用审批三道门、技能对 Agent 的可见性 |
 | ChatMessageProjectionTest / SessionApiTest / ProjectApiTest / 其他 | 22 | 投影幂等与 REST 契约 |
+
+### 技能市场的端到端验证
+
+演示技能通过 GitHub raw 以 HTTPS 发布，三道闸门逐个验证过：
+
+| 状态 | 结果 |
+|---|---|
+| 已安装、未对项目启用 | Agent 的工具清单里根本没有它——模型不会被展示，也就无从调用 |
+| 已启用、本会话未审批 | `DENIED / APPROVAL_REJECTED`，并留下成对事件 |
+| 会话内审批后 | 沙箱执行成功，50ms，输出被模型当作证据用于定位 `OrderService.java:86` |
+
+期间修掉两个真问题：技能装了也启用了，任何 Agent 仍然看不见（`scopeOf` 只认 profile 写死的工具名，而技能是运行时注册的）；以及沙箱按 UTF-8 读、子进程却按宿主机代码页写，中文输出变成乱码交给模型当证据。
 
 ## 3. 端到端功能验收
 
@@ -134,7 +146,7 @@ Q5 结束后 `test_case` 表新增 7 条用例，全部 `source=AGENT`、`priori
 | API Key 不进入 Git | 通过 | 仅存 `.env`（已 gitignore）；黑名单拒读 |
 | E2E 五个演示问题稳定运行 | 通过 | 本报告第 3 节 |
 | README 指导另一台电脑从零运行 | 通过 | 第 5 节全栈验证 |
-| 后端测试通过 | 通过 | 191 / 0 失败 |
+| 后端测试通过 | 通过 | 195 / 0 失败 |
 | 前端生产构建通过 | 通过 | `npm run build` |
 
 ## 7. 已知限制

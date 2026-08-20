@@ -1,6 +1,7 @@
 package com.devpilot.skill;
 
 import com.devpilot.agent.tool.AgentToolFixtures;
+import com.devpilot.agent.runtime.AgentRegistry;
 import com.devpilot.agent.tool.skill.SkillTools;
 import com.devpilot.chat.service.ChatSessionService;
 import com.devpilot.project.service.ProjectService;
@@ -104,6 +105,9 @@ class SkillLifecycleTest {
     @Autowired
     private SessionLifecycleService lifecycleService;
 
+    @Autowired
+    private AgentRegistry agentRegistry;
+
     private long projectId;
     private String sessionId;
     private String turnId;
@@ -196,8 +200,58 @@ class SkillLifecycleTest {
     }
 
     @Test
-    void everyAttemptLeavesApprovalEventsInTheAuditTrail() {
+    void anAgentSeesOnlyTheSkillsItsProjectHasEnabled() {
         skillService.install(SKILL_KEY);
+        skillTools.publish(skillService.require(SKILL_KEY));
+
+        // Installed but not enabled: the agent must not even be offered the tool. A model cannot
+        // decline to use something it was never shown, which is why visibility is the first gate.
+        var debugAgent = agentRegistry.require("debug_agent");
+        assertThat(agentRegistry.scopeOf(debugAgent, projectId).visibleTools()).doesNotContain(TOOL);
+
+        skillService.setEnabled(projectId, SKILL_KEY, true);
+
+        assertThat(agentRegistry.scopeOf(debugAgent, projectId).visibleTools()).contains(TOOL);
+        assertThat(agentRegistry.toolSpecs(agentRegistry.scopeOf(debugAgent, projectId)))
+                .extracting(spec -> spec.name())
+                .contains(TOOL);
+
+        // Another project enabled nothing, so the same agent sees nothing there.
+        long otherProject = AgentToolFixtures.newProject(projectService, "/srv/repos/other");
+        assertThat(agentRegistry.scopeOf(debugAgent, otherProject).visibleTools()).doesNotContain(TOOL);
+    }
+
+    @Test
+    void agentsWithoutTheSkillCategoryNeverSeeSkills() {
+        skillService.install(SKILL_KEY);
+        skillTools.publish(skillService.require(SKILL_KEY));
+        skillService.setEnabled(projectId, SKILL_KEY, true);
+
+        // Enabling a skill for a project must not widen an agent whose profile never asked for the
+        // category — otherwise a project-level decision would silently re-arm every agent.
+        for (String restricted : List.of("code_agent", "log_agent", "knowledge_agent", "supervisor")) {
+            assertThat(agentRegistry.scopeOf(agentRegistry.require(restricted), projectId).visibleTools())
+                    .doesNotContain(TOOL);
+        }
+    }
+
+    @Test
+    void enablingASkillDoesNotTurnTheAgentIntoAWriter() {
+        skillService.install(SKILL_KEY);
+        skillTools.publish(skillService.require(SKILL_KEY));
+        skillService.setEnabled(projectId, SKILL_KEY, true);
+
+        // Running a skill needs a scope that permits mutation, and that grant must stay bounded by
+        // what the agent can see: the test case writer is not in its tool list, so no amount of
+        // skill enablement makes it reachable.
+        var scope = agentRegistry.scopeOf(agentRegistry.require("debug_agent"), projectId);
+        assertThat(scope.allowMutating()).isTrue();
+        assertThat(scope.visibleTools()).doesNotContain("saveTestCases");
+        assertThat(scope.grantedPermissions()).doesNotContain(ToolPermission.TEST_CASE_WRITE);
+    }
+
+    @Test
+    void everyAttemptLeavesApprovalEventsInTheAuditTrail() {        skillService.install(SKILL_KEY);
         skillTools.publish(skillService.require(SKILL_KEY));
         skillService.setEnabled(projectId, SKILL_KEY, true);
 

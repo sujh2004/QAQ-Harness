@@ -29,12 +29,15 @@ agents:
       - AGENT_DELEGATE
 
   # 同时绑定代码与日志工具的通用排查助手，用于单 Agent 验证。
+  # allowSkills 让它能看见本项目已启用的技能——技能是运行时安装的，profile 无法预先写出名字，
+  # 只能声明「这类 Agent 可以用技能」。装哪些由人按项目决定，真要执行还要在会话里审批。
   debug_agent:
     displayName: 调试助手
     description: 通过检索代码与日志定位研发问题，适用于故障排查与代码定位
     promptFile: agents/debug_agent.md
     modelRoute: chat.default
     maxSteps: 6
+    allowSkills: true
     tools:
       - listFiles
       - searchCode

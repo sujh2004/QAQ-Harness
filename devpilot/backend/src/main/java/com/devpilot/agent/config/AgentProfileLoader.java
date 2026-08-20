@@ -94,7 +94,8 @@ public class AgentProfileLoader {
                 stringList(fields, "permissions").stream()
                         .map(ToolPermission::valueOf)
                         .collect(Collectors.toUnmodifiableSet()),
-                Boolean.TRUE.equals(fields.get("allowMutating")));
+                Boolean.TRUE.equals(fields.get("allowMutating")),
+                Boolean.TRUE.equals(fields.get("allowSkills")));
     }
 
     private static String requiredString(Map<?, ?> fields, String key, String agent, String fileName) {

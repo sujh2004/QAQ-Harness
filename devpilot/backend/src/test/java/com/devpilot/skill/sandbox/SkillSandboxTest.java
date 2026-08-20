@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -86,6 +87,19 @@ class SkillSandboxTest {
                 .doesNotContain("DASHSCOPE_API_KEY")
                 .doesNotContain("DB_PASSWORD")
                 .doesNotContain("SKILL_MARKETPLACE_URL");
+    }
+
+    @Test
+    void returnsNonAsciiOutputIntact() throws IOException {
+        // The sandbox reads UTF-8, so it must make the child write UTF-8: an interpreter following
+        // the host code page would hand the model mojibake and call it evidence.
+        Files.writeString(packageRoot.resolve("chinese.js"),
+                "process.stdout.write('异常链：空指针 → OrderService.java:86');", StandardCharsets.UTF_8);
+
+        SkillExecutionResult result = sandbox.run(packageRoot, "NODE", "chinese.js", "{}", null);
+
+        assertThat(result.successful()).isTrue();
+        assertThat(result.stdout()).isEqualTo("异常链：空指针 → OrderService.java:86");
     }
 
     @Test
