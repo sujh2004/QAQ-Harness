@@ -19,6 +19,9 @@ public enum ErrorCode {
     /** The configured repository path cannot be read. */
     REPOSITORY_NOT_ACCESSIBLE(42201, HttpStatus.UNPROCESSABLE_ENTITY,
             "Configured repository path cannot be accessed"),
+    /** The knowledge base is requested but no embedding model is configured. */
+    KNOWLEDGE_UNAVAILABLE(42202, HttpStatus.UNPROCESSABLE_ENTITY,
+            "Knowledge base is unavailable: no embedding model is configured"),
     /** An unexpected server failure. */
     INTERNAL_ERROR(50000, HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
 

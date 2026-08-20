@@ -33,6 +33,13 @@ app:
   ai:
     chat-model: ${CHAT_MODEL:qwen-plus}
     embedding-model: ${EMBEDDING_MODEL:text-embedding-v3}
+  knowledge:
+    vector-dir: ${APP_VECTOR_DIR:./data/vector}
+    chunk-size: 800
+    chunk-overlap: 150
+    top-k: 5
+    # Below this score a chunk is treated as "not found" rather than returned as weak evidence.
+    similarity-threshold: 0.6
   skill:
     install-dir: ${APP_SKILL_DIR:./data/skills}
     default-timeout: 20s

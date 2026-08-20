@@ -2,7 +2,7 @@
 
 DevPilot 是面向企业研发与故障分析的多 Agent 平台。本目录按《DevPilot 企业研发多 Agent 平台实施规格书》从 Phase 0 开始实现。
 
-当前状态：Phase 6 Supervisor。已提供 Spring Boot 后端、Vue 3 前端与四个可用页面、MySQL 开发容器与自包含 demo profile；追加式 `session_event` 事件流、turn/step 状态机、取消与重启恢复、Tool 注册表与执行管线；项目 CRUD、系统日志查询、会话与消息投影、测试用例；七个证据工具与四个委派工具、`demo-project/order-demo` 演示仓库；Supervisor 与四个专业 Agent。Knowledge Agent 与 RAG 在 Phase 7，SSE 聊天在 Phase 8，目前没有伪造接口。
+当前状态：Phase 7 知识库（RAG）。已提供 Spring Boot 后端、Vue 3 前端与四个可用页面、MySQL 开发容器与自包含 demo profile；追加式 `session_event` 事件流、turn/step 状态机、取消与重启恢复、Tool 注册表与执行管线；项目 CRUD、系统日志查询、会话与消息投影、测试用例；七个证据工具、四个委派工具与两个知识检索工具、`demo-project/order-demo` 演示仓库；Supervisor 与五个专业 Agent；Skill 市场、沙箱与安装审批链；per-project 向量知识库与 Knowledge Agent，demo profile 启动时自动导入七份演示文档。SSE 聊天在 Phase 8，目前没有伪造接口。
 
 ## 环境要求
 
@@ -53,10 +53,24 @@ GET    /api/v1/projects/{id}/test-cases
 GET    /api/v1/test-cases/{id}
 DELETE /api/v1/test-cases/{id}
 
+GET    /api/v1/projects/{id}/knowledge
+POST   /api/v1/projects/{id}/knowledge/upload
+POST   /api/v1/projects/{id}/knowledge/reindex
+GET    /api/v1/projects/{id}/knowledge/search?query=&topK=
+DELETE /api/v1/projects/{id}/knowledge/{documentId}
+
+GET    /api/v1/skills/marketplace            # 需配置 SKILL_MARKETPLACE_URL
+GET    /api/v1/skills
+POST   /api/v1/skills
+DELETE /api/v1/skills/{skillKey}
+GET    /api/v1/projects/{id}/skills
+POST   /api/v1/projects/{id}/skills
+POST   /api/v1/sessions/{sessionId}/skill-approvals
+
 POST   /api/v1/debug/agents/{agentName}     # 仅 dev / demo profile
 ```
 
-`POST /api/v1/chat/stream` 与知识库接口属于后续 Phase。
+`POST /api/v1/chat/stream` 属于 Phase 8。
 
 ## 已注册的 Tool
 
@@ -70,6 +84,8 @@ Tool 只能经 `ToolRegistry` 调用，目前没有对外的 HTTP 入口——Ph
 | `searchLogs` | `LOG_READ` | 按服务、级别、关键词、时间范围检索日志，limit ≤ 100 |
 | `getLogByTraceId` | `LOG_READ` | 取一次请求的全部日志 |
 | `getRecentErrorSummary` | `LOG_READ` | 按服务与异常类型聚合近期错误 |
+| `searchKnowledge` | `KNOWLEDGE_READ` | 检索本项目知识库，返回带出处与相关度的段落 |
+| `listKnowledgeDocuments` | `KNOWLEDGE_READ` | 列出项目已导入的知识文档 |
 | `saveTestCases` | `TEST_CASE_WRITE` | 保存 Agent 设计的测试用例，**唯一的写操作** |
 
 除 `saveTestCases` 外全部只读。代码读取限制在项目 `repositoryPath` 内：路径先规范化再解析符号链接并两次校验，`.env`、`*.key`、`*.pem`、`application-prod.yml`、`credentials.*` 等按文件名黑名单拒绝，只有白名单扩展名的文本文件可以打开，检索使用 Java NIO 而非 shell。
@@ -82,15 +98,29 @@ Tool 只能经 `ToolRegistry` 调用，目前没有对外的 HTTP 入口——Ph
 
 | Agent | 可见工具 | 说明 |
 |---|---|---|
-| `supervisor` | 四个委派工具 | 判断该问谁、分派任务、汇总证据；看不到任何原始证据工具 |
+| `supervisor` | 五个委派工具 | 判断该问谁、分派任务、汇总证据；看不到任何原始证据工具 |
 | `debug_agent` | 代码 + 日志 | 通用排查助手 |
 | `code_agent` | 代码 | 代码定位与调用链分析 |
 | `log_agent` | 日志 | 故障现象定位与异常聚合 |
-| `test_agent` | 代码 + 日志 + `saveTestCases` | 唯一允许写的 Agent |
+| `knowledge_agent` | 知识库 | 检索项目文档、规范与历史故障复盘，回答必须带出处 |
+| `test_agent` | 代码 + 日志 + 知识库 + `saveTestCases` | 唯一允许写的 Agent |
 
 Supervisor 的工具就是「问某个专业 Agent」（`askCodeAgent` 等），因此委派复用同一条 Tool 执行管线，专业 Agent 作为嵌套 run 出现，审计轨迹形成树。
 
-Knowledge Agent 需要 RAG 工具，随 Phase 7 一起加入——没有工具的 Agent 只是空壳。
+## 知识库（Phase 7）
+
+每个项目一个独立向量库（`data/vector/project-{id}.json`），物理隔离而不是元数据过滤——检索结果永远只来自本项目。文档按 Markdown 标题切块、邻块重叠，每个段落携带出处（文档名、类型）与相关度分数；`similarityThreshold` 以下的命中按「未找到」处理，工具层明确告诉模型**不要用通用知识补充**。
+
+导入与检索：
+
+```
+POST /api/v1/projects/1/knowledge/upload
+{"documentName": "错误码规范.md", "documentType": "standards", "content": "# 错误码规范\n..."}
+
+GET  /api/v1/projects/1/knowledge/search?query=优惠券 null 判空&topK=3
+```
+
+需要 Embedding 模型：激活 `dashscope` profile（`text-embedding-v3`）。未配置时知识接口返回 42202 并说明缺什么，其余功能不受影响。demo profile 启动时自动导入 `backend/src/main/resources/demo-knowledge/` 下的七份演示文档（架构、API/Java/测试规范、错误码、两份故障复盘）并完成索引，重复启动会重建索引而不是叠加。
 
 dev / demo profile 下可单独调用某个 Agent：
 
@@ -108,7 +138,7 @@ $env:DASHSCOPE_API_KEY = "sk-..."
 mvn spring-boot:run "-Dspring-boot.run.profiles=dev,dashscope"
 ```
 
-不激活时后端照常启动、所有读接口可用，只有 Agent 调用会明确报错「No chat model is configured」，不会返回编造的答案。DashScope 的自动配置在缺少 Key 时会直接抛异常，因此默认全部排除，由 `dashscope` profile 只打开 Chat 一项。
+不激活时后端照常启动、所有读接口可用，只有 Agent 调用会明确报错「No chat model is configured」，不会返回编造的答案。DashScope 的自动配置在缺少 Key 时会直接抛异常，因此默认全部排除，由 `dashscope` profile 只打开 Chat 与 Embedding 两项。
 
 契约测试使用脚本化的 Fake Provider，**不需要任何密钥**。
 
@@ -170,6 +200,11 @@ Phase 1 新增的运行时配置项：
 | `app.runtime.tool.max-result-bytes` | `65536` | Tool 结果字节上限 |
 | `app.runtime.tool.max-concurrent-executions` | `8` | Tool 执行线程池大小 |
 | `app.runtime.tool.mutating-allow-list` | 空 | 允许写操作的 Tool 白名单；Phase 5 才会加入 `saveTestCases` |
+| `app.knowledge.vector-dir` | `./data/vector` | per-project 向量库持久化目录 |
+| `app.knowledge.chunk-size` | `800` | 目标块长度（字符），先按标题切再按长度切 |
+| `app.knowledge.chunk-overlap` | `150` | 相邻块的重叠字符数 |
+| `app.knowledge.top-k` | `5` | 单次检索返回的最大段数 |
+| `app.knowledge.similarity-threshold` | `0.6` | 相关度下限，低于按「未找到」处理 |
 
 ## 文档
 

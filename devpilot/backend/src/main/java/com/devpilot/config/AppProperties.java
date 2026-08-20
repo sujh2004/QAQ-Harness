@@ -22,7 +22,29 @@ public record AppProperties(
         @DefaultValue RuntimeSettings runtime,
         @DefaultValue Repository repository,
         @DefaultValue Ai ai,
-        @DefaultValue Skill skill) {
+        @DefaultValue Skill skill,
+        @DefaultValue Knowledge knowledge) {
+
+    /**
+     * Knowledge base configuration.
+     *
+     * <p>Retrieval settings are configuration rather than constants because the right chunk size and
+     * similarity threshold depend on the corpus, and a threshold that is wrong in either direction
+     * is a correctness problem: too low invents relevance, too high hides the answer.
+     *
+     * @param vectorDir directory the per-project vector stores are persisted to
+     * @param chunkSize target chunk length in characters
+     * @param chunkOverlap characters repeated between neighbouring chunks
+     * @param topK how many chunks a search returns at most
+     * @param similarityThreshold lowest score a chunk may have and still be returned
+     */
+    public record Knowledge(
+            @DefaultValue("./data/vector") String vectorDir,
+            @DefaultValue("800") int chunkSize,
+            @DefaultValue("150") int chunkOverlap,
+            @DefaultValue("5") int topK,
+            @DefaultValue("0.6") double similarityThreshold) {
+    }
 
     /**
      * Executable skill configuration.

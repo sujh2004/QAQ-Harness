@@ -121,7 +121,7 @@ Agent 循环是 DevPilot 自己的（`agent.runtime.DefaultAgentRuntime`），�
 
 Spring AI Alibaba 的定位是 `ModelGateway` 的一个 Provider，不是 Agent 循环本身——规格书 10.1 的 `ReactAgent` 代码只是 Provider 方向示意，实际以"模型可见内容必须先落事件"为准。`SpringAiModelGateway` 适配任意 Spring AI `ChatModel`（DashScope 或其他厂商），并**显式关闭 Spring AI 的内部工具执行**：模型只负责说要调哪个工具，执行一律回到 `ToolRegistry`，否则作用域、鉴权、超时、限额与成对事件都会被绕过。工具 schema 通过只声明不执行的 `SchemaOnlyToolCallback` 发布，真被调用即抛异常，因为那意味着接线出了问题。
 
-DashScope 的自动配置在缺少 API Key 时会抛异常并拖垮整个上下文，所以默认全部排除，由 `dashscope` profile 只重新打开 Chat 一项。没有 Key 时应用照常启动，Agent 调用给出明确报错而不是编造答案。
+DashScope 的自动配置在缺少 API Key 时会抛异常并拖垮整个上下文，所以默认全部排除，由 `dashscope` profile 只重新打开 Chat 与 Embedding 两项。没有 Key 时应用照常启动，Agent 调用给出明确报错而不是编造答案。
 
 Agent 的人设、模型路由、步数与可见 Tool 全部来自 `resources/agent-profiles/standard.yml` 与 `resources/prompts/`，新增 Agent 是加 profile 条目，不是改循环。profile 声明的作用域必须是应用能力的子集，试图扩权会让应用启动失败。
 
@@ -136,6 +136,16 @@ Supervisor 不是另一套编排引擎，它的工具是 `askCodeAgent`、`askLo
 上下文也按 run 隔离：顶层 Agent 看得到整段对话以保留记忆；被委派的专业 Agent 只看到分派给它的任务和它自己取到的证据。否则兄弟 Agent 的产出会被误读成"这活我已经干过了"。任务文本取自 `agent_started` 事件而非调用方传参，所以专业 Agent 读到的指令与审计轨迹里记录的完全一致。
 
 Supervisor 只持有 `AGENT_DELEGATE` 权限，看不到任何原始证据工具；专业 Agent 反过来看不到委派工具。
+
+## 知识库与检索（Phase 7）
+
+知识库的目标不是"能搜到"，而是**回答可归因**：检索结果不带出处的知识与模型自己的先验无法区分，这正是该能力要避免的事。因此每个段落携带出处（文档名、类型）与相关度分数，`knowledge_agent` 的人设要求每个关键结论标明来源文档。
+
+隔离是物理的：`ProjectVectorStores` 为每个项目维护独立的 `SimpleVectorStore`，持久化为 `data/vector/project-{id}.json`，项目 A 的块永远不会加载进项目 B 的索引。用元数据过滤器做隔离的问题是"忘了加过滤就泄漏"，用独立存储则无法忘记。原文存 `knowledge_document.content`，索引可从数据库整体重建；删除文档即重建索引，"已删除不可检索"由构造保证而非删除逻辑的正确性。
+
+切块（`DocumentSplitter`）先按 Markdown 标题切、再按长度切，段落与句子边界回退，相邻块重叠——标题和它引出的正文留在同一块里，单块被检索出来时才是可读的。阈值之下的命中按「未找到」处理，工具返回的摘要明确要求模型不要用通用知识补充，把"检索不足"变成显式事实而不是留白。
+
+Embedding 走 `dashscope` profile（`text-embedding-v3`），与 Chat 一样默认排除、按需打开；无 Embedding 模型时知识接口返回 42202 说明缺什么，应用其余部分照常工作。
 
 ## 写操作的两道门
 
@@ -154,5 +164,5 @@ MVP 只有一个会写数据的工具：`saveTestCases`。它要同时通过两�
 
 ## 分阶段约束
 
-Phase 0 建立工程、配置、统一错误响应和健康检查。Phase 1 实现 Session Event Log、生命周期、Tool Registry 与运行时接口，不创建 Controller、业务表或空壳 Agent。Phase 2 加入项目、日志与会话业务：`dev_project`、`system_log`、`chat_session` 与作为投影的 `chat_message`，以及对应的 REST 接口和 demo 数据。Phase 3 加入 Code Tool 与 Log Tool 及 `demo-project/order-demo` 演示仓库，全部只读且经 `ToolRegistry` 执行；此阶段不建 Supervisor，Fake Model Provider 仍只存在于测试源码。Phase 4 实现自研 Agent 循环与 Spring AI Provider。Phase 5 加入 `code_agent`、`log_agent`、`test_agent` 与 `saveTestCases`；Knowledge Agent 依赖 Phase 7 的 RAG 工具，没有工具的 Agent 只是空壳，因此推迟到 RAG 之后。Supervisor 属于 Phase 6。
+Phase 0 建立工程、配置、统一错误响应和健康检查。Phase 1 实现 Session Event Log、生命周期、Tool Registry 与运行时接口，不创建 Controller、业务表或空壳 Agent。Phase 2 加入项目、日志与会话业务：`dev_project`、`system_log`、`chat_session` 与作为投影的 `chat_message`，以及对应的 REST 接口和 demo 数据。Phase 3 加入 Code Tool 与 Log Tool 及 `demo-project/order-demo` 演示仓库，全部只读且经 `ToolRegistry` 执行；此阶段不建 Supervisor，Fake Model Provider 仍只存在于测试源码。Phase 4 实现自研 Agent 循环与 Spring AI Provider。Phase 5 加入 `code_agent`、`log_agent`、`test_agent` 与 `saveTestCases`。Phase 6 加入 Supervisor 与委派工具。Phase 7 加入知识库：`knowledge_document`、per-project 向量索引、`DocumentSplitter`、`searchKnowledge`/`listKnowledgeDocuments` 工具与 `knowledge_agent`；Knowledge Agent 不先于其工具存在。
 

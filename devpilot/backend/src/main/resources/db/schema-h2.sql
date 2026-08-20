@@ -134,3 +134,18 @@ CREATE TABLE IF NOT EXISTS skill_approval (
     decided_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uk_skill_approval UNIQUE (session_id, skill_id)
 );
+
+CREATE TABLE IF NOT EXISTS knowledge_document (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    project_id BIGINT NOT NULL,
+    document_name VARCHAR(255) NOT NULL,
+    document_type VARCHAR(50),
+    source_path VARCHAR(500),
+    content CLOB NOT NULL,
+    vector_status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    chunk_count INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_knowledge_project ON knowledge_document (project_id);

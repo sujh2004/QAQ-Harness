@@ -2,6 +2,7 @@ package com.devpilot.common.exception;
 
 import com.devpilot.common.api.ErrorCode;
 import com.devpilot.common.api.Result;
+import com.devpilot.knowledge.rag.KnowledgeUnavailableException;
 import com.devpilot.runtime.lifecycle.IllegalLifecycleTransitionException;
 import com.devpilot.runtime.session.SessionStreamNotFoundException;
 import jakarta.validation.ConstraintViolationException;
@@ -57,6 +58,21 @@ public final class GlobalExceptionHandler {
     public ResponseEntity<Result<Void>> handleSessionStreamNotFound(SessionStreamNotFoundException exception) {
         return ResponseEntity.status(ErrorCode.SESSION_NOT_FOUND.status())
                 .body(Result.failure(ErrorCode.SESSION_NOT_FOUND, exception.getMessage()));
+    }
+
+    /**
+     * Handles knowledge base access without a configured embedding model.
+     *
+     * <p>This is a deployment condition the caller can understand and act on, not a server fault,
+     * so it is answered with the remedy rather than a bare internal error.
+     *
+     * @param exception knowledge base unavailable
+     * @return client-safe response explaining what is missing
+     */
+    @ExceptionHandler(KnowledgeUnavailableException.class)
+    public ResponseEntity<Result<Void>> handleKnowledgeUnavailable(KnowledgeUnavailableException exception) {
+        return ResponseEntity.status(ErrorCode.KNOWLEDGE_UNAVAILABLE.status())
+                .body(Result.failure(ErrorCode.KNOWLEDGE_UNAVAILABLE, exception.getMessage()));
     }
 
     /**

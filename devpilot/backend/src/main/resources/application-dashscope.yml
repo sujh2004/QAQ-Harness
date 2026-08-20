@@ -6,8 +6,8 @@
 # configuration, logs or session events.
 spring:
   autoconfigure:
-    # Only the chat model is re-enabled. Image, video, audio, rerank and the agent API are not used
-    # by DevPilot; embedding is switched on when the knowledge base arrives in Phase 7.
+    # Chat and embedding are re-enabled — embedding is what the knowledge base runs on. Image,
+    # video, audio, rerank and the agent API are still not used by DevPilot.
     exclude:
       - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAgentAutoConfiguration
       - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeImageAutoConfiguration
@@ -15,10 +15,12 @@ spring:
       - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioSpeechAutoConfiguration
       - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioTranscriptionAutoConfiguration
       - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeRerankAutoConfiguration
-      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeEmbeddingAutoConfiguration
   ai:
     dashscope:
       api-key: ${DASHSCOPE_API_KEY}
       chat:
         options:
           model: ${CHAT_MODEL:qwen-plus}
+      embedding:
+        options:
+          model: ${EMBEDDING_MODEL:text-embedding-v3}
