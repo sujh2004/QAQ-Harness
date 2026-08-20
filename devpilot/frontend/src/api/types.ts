@@ -121,3 +121,32 @@ export interface LogQuery {
   page?: number
   size?: number
 }
+
+/** One imported knowledge document. */
+export interface KnowledgeDocument {
+  id: number
+  projectId: number
+  documentName: string
+  documentType: string | null
+  sourcePath: string | null
+  vectorStatus: string
+  chunkCount: number
+  createdAt: string
+}
+
+/** One retrieved passage, with the document it came from. */
+export interface KnowledgeMatch {
+  documentId: number
+  documentName: string
+  documentType: string
+  chunk: string
+  score: number
+}
+
+/** Body of a streaming chat request. */
+export interface ChatStreamRequest {
+  projectId: number
+  sessionId?: string
+  message?: string
+}
+

@@ -100,6 +100,16 @@ app:
       enabled: ${RUNTIME_RECOVERY_ENABLED:true}
     profile:
       version: ${AGENT_PROFILE_VERSION:standard@1}
+    chat:
+      # Routing is the supervisor's job; the browser never names the agent.
+      agent: ${CHAT_AGENT:supervisor}
+      # After this a client must reconnect with Last-Event-ID, which loses nothing: the log is the
+      # source of truth and replay is exact.
+      stream-timeout: 10m
+      max-concurrent-turns: 4
+      # How far a slow browser may fall behind before it is told to reconnect and replay.
+      queue-capacity: 256
+      replay-limit: 2000
     tool:
       default-timeout: 30s
       max-result-items: 100

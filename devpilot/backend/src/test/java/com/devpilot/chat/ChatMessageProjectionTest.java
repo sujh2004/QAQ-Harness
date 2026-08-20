@@ -59,7 +59,7 @@ class ChatMessageProjectionTest {
     void projectsUserAndAssistantMessagesAsTheyAreRecorded() {
         String turnId = lifecycleService.startTurn(sessionId, "USER", "订单服务为什么 500？");
         lifecycleService.recordAssistantMessage(
-                sessionId, turnId, null, "supervisor", "优惠券服务返回 null，导致空指针。");
+                sessionId, turnId, null, null, "supervisor", "优惠券服务返回 null，导致空指针。");
         lifecycleService.endTurn(sessionId, turnId, TurnEndReason.COMPLETED, "answered");
 
         List<MessageResponse> messages = chatSessionService.messages(sessionId, 0, 50).items();
@@ -75,7 +75,7 @@ class ChatMessageProjectionTest {
     @Test
     void agreesWithTheProjectionRebuiltFromTheEventLog() {
         String turnId = lifecycleService.startTurn(sessionId, "USER", "第一个问题");
-        lifecycleService.recordAssistantMessage(sessionId, turnId, null, "supervisor", "第一个回答");
+        lifecycleService.recordAssistantMessage(sessionId, turnId, null, null, "supervisor", "第一个回答");
         lifecycleService.endTurn(sessionId, turnId, TurnEndReason.COMPLETED, "answered");
 
         SessionProjection fromEvents = lifecycleService.project(sessionId);
@@ -92,7 +92,7 @@ class ChatMessageProjectionTest {
     @Test
     void rebuildRestoresTheSameTimeline() {
         String turnId = lifecycleService.startTurn(sessionId, "USER", "问题");
-        lifecycleService.recordAssistantMessage(sessionId, turnId, null, "supervisor", "回答");
+        lifecycleService.recordAssistantMessage(sessionId, turnId, null, null, "supervisor", "回答");
         lifecycleService.endTurn(sessionId, turnId, TurnEndReason.COMPLETED, "answered");
         List<MessageResponse> before = chatSessionService.messages(sessionId, 0, 50).items();
 
@@ -123,7 +123,7 @@ class ChatMessageProjectionTest {
         String turnId = lifecycleService.startTurn(sessionId, "USER", "问题");
         lifecycleService.recordAssistantDelta(sessionId, turnId, null, "部分");
         lifecycleService.recordAssistantDelta(sessionId, turnId, null, "回答");
-        lifecycleService.recordAssistantMessage(sessionId, turnId, null, "supervisor", "部分回答");
+        lifecycleService.recordAssistantMessage(sessionId, turnId, null, null, "supervisor", "部分回答");
         lifecycleService.endTurn(sessionId, turnId, TurnEndReason.COMPLETED, "answered");
 
         assertThat(chatSessionService.messages(sessionId, 0, 50).total()).isEqualTo(2);

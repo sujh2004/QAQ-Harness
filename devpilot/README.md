@@ -2,7 +2,7 @@
 
 DevPilot 是面向企业研发与故障分析的多 Agent 平台。本目录按《DevPilot 企业研发多 Agent 平台实施规格书》从 Phase 0 开始实现。
 
-当前状态：Phase 7 知识库（RAG）。已提供 Spring Boot 后端、Vue 3 前端与四个可用页面、MySQL 开发容器与自包含 demo profile；追加式 `session_event` 事件流、turn/step 状态机、取消与重启恢复、Tool 注册表与执行管线；项目 CRUD、系统日志查询、会话与消息投影、测试用例；七个证据工具、四个委派工具与两个知识检索工具、`demo-project/order-demo` 演示仓库；Supervisor 与五个专业 Agent；Skill 市场、沙箱与安装审批链；per-project 向量知识库与 Knowledge Agent，demo profile 启动时自动导入七份演示文档。SSE 聊天在 Phase 8，目前没有伪造接口。
+当前状态：Phase 8 SSE 与前端轨迹。已提供 Spring Boot 后端、Vue 3 前端与六个可用页面、MySQL 开发容器与自包含 demo profile；追加式 `session_event` 事件流、turn/step 状态机、取消与重启恢复、Tool 注册表与执行管线；项目 CRUD、系统日志查询、会话与消息投影、测试用例；七个证据工具、四个委派工具与两个知识检索工具、`demo-project/order-demo` 演示仓库；Supervisor 与五个专业 Agent；Skill 市场、沙箱与安装审批链；per-project 向量知识库与 Knowledge Agent；SSE 流式对话、Agent 轨迹实时展示与 `Last-Event-ID` 断线续传。目前没有伪造接口。
 
 ## 环境要求
 
@@ -31,6 +31,8 @@ MySQL 映射为宿主机 `3307` → 容器 `3306`。健康检查：`GET http://l
 
 ```text
 GET    /api/v1/health
+
+POST   /api/v1/chat/stream                   # SSE，支持 Last-Event-ID 断线续传
 
 GET    /api/v1/projects
 POST   /api/v1/projects
@@ -70,7 +72,36 @@ POST   /api/v1/sessions/{sessionId}/skill-approvals
 POST   /api/v1/debug/agents/{agentName}     # 仅 dev / demo profile
 ```
 
-`POST /api/v1/chat/stream` 属于 Phase 8。
+## 流式对话（Phase 8）
+
+`POST /api/v1/chat/stream` 返回 `text/event-stream`。它推送的**不是 token 流，而是 `session_event` 的实时投影**：每一帧都对应一条已经落库的事件，SSE 的 `id` 就是事件 `seq`。
+
+```http
+POST /api/v1/chat/stream
+Content-Type: application/json
+Accept: text/event-stream
+Last-Event-ID: 42        # 可选，重连时带上
+
+{"projectId": 1, "sessionId": "session_...", "message": "order-service 最近为什么报错？"}
+```
+
+```text
+id: 43
+event: agent_started
+data: {"sessionId":"session_...","seq":43,"eventType":"agent_started","runId":"run_...","payload":{...}}
+```
+
+三条规则决定了它的行为：
+
+- **先订阅再回放**。服务端在开始读历史之前就订阅了实时流，因此不存在「查询之后、订阅之前」这个丢事件的窗口。
+- **seq 单调递增**。客户端按 `(sessionId, seq)` 幂等消费，重复帧直接丢弃；这让重连不需要任何约定。
+- **慢客户端不拖慢 Agent**。订阅队列有界，塞满即结束该连接并让客户端用 `Last-Event-ID` 重连补齐——事件仍在日志里，一条都不会少。
+
+不带 `message` 的请求表示**只附着不提问**：回放缺失事件后跟随正在进行的 turn，用于刷新页面或断线重连，不会重复开一轮对话。
+
+取消仍走 `POST /api/v1/sessions/{sessionId}/turns/{turnId}/cancel`，`turnId` 从 `turn_started` 帧里拿。
+
+前端用 `fetch` + `ReadableStream` 读流（`EventSource` 只能发 GET、无法带 body 与自定义头），页面刷新后由 `GET /api/v1/sessions/{id}/events` 回放重建同一条时间线。
 
 ## 已注册的 Tool
 
@@ -180,6 +211,8 @@ npm run build
 
 默认前端地址为 `http://localhost:5173`，后端地址通过 `VITE_API_BASE_URL` 配置。
 
+页面：项目列表、项目概览（仓库校验与错误聚合）、**智能对话**（SSE 流式回答 + Agent 轨迹树）、**知识库**（导入、检索、重建索引）、日志检索、会话与事件流。对话页与知识库页需要后端激活 `dashscope` profile；其余页面不需要任何密钥。
+
 ## 配置
 
 开发配置示例见 `.env.example` 与 `backend/src/main/resources/application-dev.yml.example`。真实 API Key、数据库密码和本地路径不得提交。
@@ -200,6 +233,11 @@ Phase 1 新增的运行时配置项：
 | `app.runtime.tool.max-result-bytes` | `65536` | Tool 结果字节上限 |
 | `app.runtime.tool.max-concurrent-executions` | `8` | Tool 执行线程池大小 |
 | `app.runtime.tool.mutating-allow-list` | 空 | 允许写操作的 Tool 白名单；Phase 5 才会加入 `saveTestCases` |
+| `app.runtime.chat.agent` | `supervisor` | 聊天请求分派到的 Agent；路由由 Supervisor 决定，不由浏览器指定 |
+| `app.runtime.chat.stream-timeout` | `10m` | 单条 SSE 连接的最长存活时间，超时后客户端带 `Last-Event-ID` 重连 |
+| `app.runtime.chat.max-concurrent-turns` | `4` | 同时运行的聊天 turn 数上限，超出立即拒绝而不是无界排队 |
+| `app.runtime.chat.queue-capacity` | `256` | 慢客户端可积压的事件数，超出即结束连接让其重连补齐 |
+| `app.runtime.chat.replay-limit` | `2000` | 单次回放读取的事件页大小 |
 | `app.knowledge.vector-dir` | `./data/vector` | per-project 向量库持久化目录 |
 | `app.knowledge.chunk-size` | `800` | 目标块长度（字符），先按标题切再按长度切 |
 | `app.knowledge.chunk-overlap` | `150` | 相邻块的重叠字符数 |

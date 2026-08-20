@@ -71,6 +71,20 @@ onMounted(() => {
           <RouterLink
             class="nav-item"
             active-class="nav-item--active"
+            :to="`/projects/${projectId}/chat`"
+          >
+            智能对话
+          </RouterLink>
+          <RouterLink
+            class="nav-item"
+            active-class="nav-item--active"
+            :to="`/projects/${projectId}/knowledge`"
+          >
+            知识库
+          </RouterLink>
+          <RouterLink
+            class="nav-item"
+            active-class="nav-item--active"
             :to="`/projects/${projectId}/logs`"
           >
             日志
@@ -83,14 +97,13 @@ onMounted(() => {
             会话与轨迹
           </RouterLink>
         </template>
-        <span class="nav-item nav-item--muted">知识库 · Phase 7</span>
-        <span class="nav-item nav-item--muted">测试用例 · Phase 5</span>
+        <span class="nav-item nav-item--muted">测试用例 · Phase 9</span>
       </nav>
 
       <div class="phase-note">
         <span>当前里程碑</span>
-        <strong>Phase 4</strong>
-        <p>事件溯源运行时、只读工具层与单 Agent 已就绪。</p>
+        <strong>Phase 8</strong>
+        <p>SSE 流式对话、Agent 轨迹与断线续传已就绪。</p>
         <ElTag :type="statusType" effect="dark" size="small" round>{{ statusLabel }}</ElTag>
       </div>
     </aside>

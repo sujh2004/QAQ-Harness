@@ -3,6 +3,8 @@ import type {
   AgentRun,
   ApiResult,
   ErrorSummary,
+  KnowledgeDocument,
+  KnowledgeMatch,
   LogEntry,
   LogQuery,
   Message,
@@ -123,9 +125,35 @@ export function listMessages(sessionId: string): Promise<PageResponse<Message>> 
 export function listEvents(sessionId: string, afterSeq = 0): Promise<SessionEvent[]> {
   return unwrap(
     http.get<ApiResult<SessionEvent[]>>(`/api/v1/sessions/${sessionId}/events`, {
-      params: { afterSeq, limit: 500 },
+      params: { afterSeq, limit: EVENT_PAGE_SIZE },
     }),
   )
+}
+
+/** How many events one replay request returns. */
+const EVENT_PAGE_SIZE = 500
+
+/**
+ * Replays a session's whole event stream.
+ *
+ * <p>Paging to the end matters: a partially replayed stream would show a timeline that silently
+ * differs from what the live view showed, which is exactly the inconsistency event sourcing exists
+ * to prevent.
+ *
+ * @param sessionId session identity
+ */
+export async function listAllEvents(sessionId: string): Promise<SessionEvent[]> {
+  const all: SessionEvent[] = []
+  let afterSeq = 0
+  for (;;) {
+    const page = await listEvents(sessionId, afterSeq)
+    all.push(...page)
+    const last = page.length > 0 ? page[page.length - 1] : undefined
+    if (!last || page.length < EVENT_PAGE_SIZE) {
+      return all
+    }
+    afterSeq = last.seq
+  }
 }
 
 /**
@@ -135,4 +163,94 @@ export function listEvents(sessionId: string, afterSeq = 0): Promise<SessionEven
  */
 export function listRuns(sessionId: string): Promise<AgentRun[]> {
   return unwrap(http.get<ApiResult<AgentRun[]>>(`/api/v1/sessions/${sessionId}/runs`))
+}
+
+/**
+ * Cancels the running turn of a session.
+ *
+ * @param sessionId session identity
+ * @param turnId turn to cancel
+ */
+export function cancelTurn(sessionId: string, turnId: string): Promise<unknown> {
+  return unwrap(
+    http.post<ApiResult<unknown>>(`/api/v1/sessions/${sessionId}/turns/${turnId}/cancel`),
+  )
+}
+
+/**
+ * Lists the knowledge documents of a project.
+ *
+ * @param projectId project identity
+ */
+export function listKnowledge(projectId: number): Promise<KnowledgeDocument[]> {
+  return unwrap(
+    http.get<ApiResult<KnowledgeDocument[]>>(`/api/v1/projects/${projectId}/knowledge`),
+  )
+}
+
+/**
+ * Imports and indexes one document.
+ *
+ * @param projectId project identity
+ * @param document name, type and content
+ */
+export function uploadKnowledge(
+  projectId: number,
+  document: { documentName: string; documentType?: string; sourcePath?: string; content: string },
+): Promise<KnowledgeDocument> {
+  return unwrap(
+    http.post<ApiResult<KnowledgeDocument>>(
+      `/api/v1/projects/${projectId}/knowledge/upload`,
+      document,
+      // Embedding a whole document takes longer than a plain read.
+      { timeout: 120_000 },
+    ),
+  )
+}
+
+/**
+ * Rebuilds the whole index of a project.
+ *
+ * @param projectId project identity
+ */
+export function reindexKnowledge(projectId: number): Promise<KnowledgeDocument[]> {
+  return unwrap(
+    http.post<ApiResult<KnowledgeDocument[]>>(`/api/v1/projects/${projectId}/knowledge/reindex`, null, {
+      timeout: 300_000,
+    }),
+  )
+}
+
+/**
+ * Retrieves passages relevant to a query.
+ *
+ * @param projectId project identity
+ * @param query natural-language query
+ * @param topK how many passages to return
+ */
+export function searchKnowledge(
+  projectId: number,
+  query: string,
+  topK = 5,
+): Promise<KnowledgeMatch[]> {
+  return unwrap(
+    http.get<ApiResult<KnowledgeMatch[]>>(`/api/v1/projects/${projectId}/knowledge/search`, {
+      params: { query, topK },
+      timeout: 60_000,
+    }),
+  )
+}
+
+/**
+ * Removes one document and rebuilds the index without it.
+ *
+ * @param projectId project identity
+ * @param documentId document to remove
+ */
+export function deleteKnowledge(projectId: number, documentId: number): Promise<unknown> {
+  return unwrap(
+    http.delete<ApiResult<unknown>>(`/api/v1/projects/${projectId}/knowledge/${documentId}`, {
+      timeout: 300_000,
+    }),
+  )
 }

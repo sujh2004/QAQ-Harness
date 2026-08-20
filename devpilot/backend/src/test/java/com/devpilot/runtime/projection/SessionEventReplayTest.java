@@ -71,7 +71,8 @@ class SessionEventReplayTest {
         String secondStep = lifecycleService.startStep(sessionId, completedTurnId, "write answer");
         lifecycleService.recordAssistantDelta(sessionId, completedTurnId, secondStep, "根据日志与代码分析，");
         lifecycleService.recordAssistantMessage(
-                sessionId, completedTurnId, secondStep, "supervisor", "根据日志与代码分析，优惠券服务返回 null。");
+                sessionId, completedTurnId, secondStep, null, "supervisor",
+                "根据日志与代码分析，优惠券服务返回 null。");
         lifecycleService.endStep(sessionId, secondStep, StepStatus.COMPLETED, "answer written");
         lifecycleService.endTurn(sessionId, completedTurnId, TurnEndReason.COMPLETED, "answered");
 

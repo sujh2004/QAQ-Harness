@@ -147,6 +147,20 @@ Supervisor 只持有 `AGENT_DELEGATE` 权限，看不到任何原始证据工具
 
 Embedding 走 `dashscope` profile（`text-embedding-v3`），与 Chat 一样默认排除、按需打开；无 Embedding 模型时知识接口返回 42202 说明缺什么，应用其余部分照常工作。
 
+## SSE：事件流的实时投影（Phase 8）
+
+聊天接口推送的不是 token，而是 `session_event` 本身。SSE 的 `id` 就是事件 `seq`，`event` 是事件类型，`data` 是与回放接口完全相同的 envelope——同一个 `SessionEventSseCodec` 编码实时帧与回放帧，客户端无法（也不需要）区分一帧是实时来的还是重连补的。这正是 `Last-Event-ID` 能做到「不多不少」的原因。
+
+三个结构性约束：
+
+1. **先订阅再回放**。`ChatStreamService` 在读取历史之前先向 `SessionEventBroadcaster` 订阅，因此不存在「查询返回之后、订阅建立之前」这个丢事件的窗口。判断被跟随的 turn 是否已结束也从回放结果里读，而不是回头查投影——投影会告诉你 turn 已结束，却不会把那条 `turn_ended` 帧发给客户端。
+2. **seq 单调**。回放与实时共用一个游标，`seq <= 已发送` 的事件直接丢弃。客户端的幂等因此是构造保证的，不是约定。
+3. **慢客户端不拖慢 Agent**。广播是提交后回调，跑在产生事件的那个线程上。订阅队列有界且**不等待**：塞满就标记溢出并结束该连接，客户端用 `Last-Event-ID` 重连补齐。一个卡住的浏览器付出一次重连的代价，而不是让 Agent 卡在 `emitter.send()` 上。
+
+两个线程池而不是一个，因为两件事的失败方式不同：跑一轮对话是昂贵且有界的工作，超限就立刻拒绝（`turn_ended` 里写明原因）；给浏览器泵事件是廉价但长命的工作，拒绝一个只是围观的连接没有道理。两个池都是有界的——无界池会把一堆浏览器标签页变成线程泄漏。
+
+订阅是**进程内**的。多实例部署需要在事件存储与广播器之间加一条共享总线（Redis pub/sub），但客户端协议不变：实时通道漏掉的，回放本来就能覆盖。
+
 ## 写操作的两道门
 
 MVP 只有一个会写数据的工具：`saveTestCases`。它要同时通过两道互相独立、都在模型触及范围之外的门：
@@ -164,5 +178,5 @@ MVP 只有一个会写数据的工具：`saveTestCases`。它要同时通过两�
 
 ## 分阶段约束
 
-Phase 0 建立工程、配置、统一错误响应和健康检查。Phase 1 实现 Session Event Log、生命周期、Tool Registry 与运行时接口，不创建 Controller、业务表或空壳 Agent。Phase 2 加入项目、日志与会话业务：`dev_project`、`system_log`、`chat_session` 与作为投影的 `chat_message`，以及对应的 REST 接口和 demo 数据。Phase 3 加入 Code Tool 与 Log Tool 及 `demo-project/order-demo` 演示仓库，全部只读且经 `ToolRegistry` 执行；此阶段不建 Supervisor，Fake Model Provider 仍只存在于测试源码。Phase 4 实现自研 Agent 循环与 Spring AI Provider。Phase 5 加入 `code_agent`、`log_agent`、`test_agent` 与 `saveTestCases`。Phase 6 加入 Supervisor 与委派工具。Phase 7 加入知识库：`knowledge_document`、per-project 向量索引、`DocumentSplitter`、`searchKnowledge`/`listKnowledgeDocuments` 工具与 `knowledge_agent`；Knowledge Agent 不先于其工具存在。
+Phase 0 建立工程、配置、统一错误响应和健康检查。Phase 1 实现 Session Event Log、生命周期、Tool Registry 与运行时接口，不创建 Controller、业务表或空壳 Agent。Phase 2 加入项目、日志与会话业务：`dev_project`、`system_log`、`chat_session` 与作为投影的 `chat_message`，以及对应的 REST 接口和 demo 数据。Phase 3 加入 Code Tool 与 Log Tool 及 `demo-project/order-demo` 演示仓库，全部只读且经 `ToolRegistry` 执行；此阶段不建 Supervisor，Fake Model Provider 仍只存在于测试源码。Phase 4 实现自研 Agent 循环与 Spring AI Provider。Phase 5 加入 `code_agent`、`log_agent`、`test_agent` 与 `saveTestCases`。Phase 6 加入 Supervisor 与委派工具。Phase 7 加入知识库：`knowledge_document`、per-project 向量索引、`DocumentSplitter`、`searchKnowledge`/`listKnowledgeDocuments` 工具与 `knowledge_agent`；Knowledge Agent 不先于其工具存在。Phase 8 加入 SSE 聊天与前端轨迹：广播器、`POST /api/v1/chat/stream`、对话页与知识库页；先保证后端稳定输出业务事件，UI 只是它的消费者。
 

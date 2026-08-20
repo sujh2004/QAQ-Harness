@@ -24,6 +24,16 @@ export default createRouter({
       component: () => import('@/views/LogsView.vue'),
     },
     {
+      path: '/projects/:projectId/chat',
+      name: 'project-chat',
+      component: () => import('@/views/ChatView.vue'),
+    },
+    {
+      path: '/projects/:projectId/knowledge',
+      name: 'project-knowledge',
+      component: () => import('@/views/KnowledgeView.vue'),
+    },
+    {
       path: '/projects/:projectId/sessions',
       name: 'project-sessions',
       component: () => import('@/views/SessionsView.vue'),

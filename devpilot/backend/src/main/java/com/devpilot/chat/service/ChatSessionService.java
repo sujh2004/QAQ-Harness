@@ -114,6 +114,18 @@ public class ChatSessionService {
     }
 
     /**
+     * Reads one session.
+     *
+     * @param sessionId session identity
+     * @return the session
+     * @throws BusinessException when the session does not exist
+     */
+    @Transactional(readOnly = true)
+    public SessionResponse get(String sessionId) {
+        return SessionResponse.from(requireSession(sessionId));
+    }
+
+    /**
      * Lists the sessions of a project, most recently updated first.
      *
      * @param projectId owning project

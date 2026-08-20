@@ -247,19 +247,24 @@ public class SessionLifecycleService {
     /**
      * Records a complete assistant message.
      *
+     * <p>The message is scoped to the run that produced it, not only to the step: a delegated
+     * specialist answers inside its own run, and an answer that cannot be attributed to a run
+     * cannot be told apart from the supervisor's reply to the user.
+     *
      * @param sessionId owning session
      * @param turnId owning turn
      * @param stepId owning step, may be null
+     * @param runId owning agent run, may be null
      * @param agentName producing agent
      * @param content message text
      * @throws IllegalLifecycleTransitionException when the turn is not running
      */
     @Transactional
     public void recordAssistantMessage(
-            String sessionId, String turnId, String stepId, String agentName, String content) {
+            String sessionId, String turnId, String stepId, String runId, String agentName, String content) {
         requireRunningTurn(project(sessionId), sessionId, turnId);
-        eventStore.append(sessionId, AppendEventCommand.ofStep(
-                SessionEventType.ASSISTANT_MESSAGE, turnId, stepId,
+        eventStore.append(sessionId, AppendEventCommand.ofRun(
+                SessionEventType.ASSISTANT_MESSAGE, turnId, stepId, runId,
                 new AssistantMessagePayload(agentName, content)));
     }
 

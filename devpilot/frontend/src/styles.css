@@ -718,4 +718,280 @@ code {
   .session-layout {
     grid-template-columns: 1fr;
   }
+
+  .chat-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Chat (Phase 8) ---- */
+
+.chat-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 18px;
+  align-items: start;
+}
+
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 190px);
+  min-height: 420px;
+}
+
+.session-select {
+  width: 220px;
+}
+
+.chat-thread {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.chat-hint {
+  margin: 0;
+  color: #71817c;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.bubble {
+  display: grid;
+  gap: 6px;
+  max-width: 82%;
+  padding: 12px 14px;
+  border-radius: 14px;
+}
+
+.bubble--user {
+  align-self: flex-end;
+  background: rgb(200 241 108 / 30%);
+}
+
+.bubble--assistant {
+  align-self: flex-start;
+  border: 1px solid #dee4df;
+  background: rgb(255 255 255 / 85%);
+}
+
+.bubble-role {
+  color: #71817c;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.bubble-body {
+  font-size: 13.5px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-status {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: #71817c;
+  font-size: 12px;
+}
+
+.chat-status .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #6fa86f;
+  animation: chat-pulse 1.2s ease-in-out infinite;
+}
+
+.chat-status .dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.chat-status .dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes chat-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.chat-composer {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e7e3;
+}
+
+.composer-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ---- Agent trajectory ---- */
+
+.trace-panel {
+  max-height: calc(100vh - 190px);
+  overflow-y: auto;
+}
+
+.trace-note {
+  margin: -8px 0 14px;
+}
+
+.run-node {
+  margin-top: 10px;
+  margin-left: calc(var(--depth, 0) * 6px);
+  padding: 10px 12px;
+  border-left: 2px solid #c8d6cc;
+  border-radius: 0 10px 10px 0;
+  background: rgb(255 255 255 / 55%);
+}
+
+.run-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.run-id {
+  color: #71817c;
+  font-size: 11px;
+}
+
+.run-pulse {
+  color: #6fa86f;
+  font-size: 11px;
+  animation: chat-pulse 1.4s ease-in-out infinite;
+}
+
+.run-input {
+  margin: 8px 0 0;
+  color: #4a5a55;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.tool-call {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgb(19 43 37 / 4%);
+}
+
+.tool-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tool-duration {
+  color: #8a9a94;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.tool-line {
+  margin: 6px 0 0;
+  color: #4a5a55;
+  font-size: 11.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tool-line--result {
+  max-height: 128px;
+  overflow-y: auto;
+  color: #3d4a46;
+}
+
+.tool-line--error {
+  color: #b8474a;
+}
+
+.run-error {
+  margin: 8px 0 0;
+  color: #b8474a;
+  font-size: 12px;
+}
+
+/* ---- Knowledge base (Phase 7 UI) ---- */
+
+.upload-form {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.match-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.match-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.match-chunk {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  border-radius: 8px;
+  color: #3d4a46;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  background: rgb(19 43 37 / 5%);
+}
+
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.doc-table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid #dfe5e0;
+  color: #71817c;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.doc-table td {
+  padding: 10px;
+  border-bottom: 1px solid #eceff0;
+  vertical-align: top;
 }

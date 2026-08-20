@@ -114,11 +114,13 @@ public record AppProperties(
      * @param recovery startup recovery of dangling lifecycle state
      * @param tool tool execution limits
      * @param profile agent profile selection
+     * @param chat streaming chat limits
      */
     public record RuntimeSettings(
             @DefaultValue Recovery recovery,
             @DefaultValue Tool tool,
-            @DefaultValue Profile profile) {
+            @DefaultValue Profile profile,
+            @DefaultValue Chat chat) {
 
         /**
          * Startup recovery configuration.
@@ -135,6 +137,27 @@ public record AppProperties(
          * @param version profile version pinned when a session is created
          */
         public record Profile(@DefaultValue("standard@1") String version) {
+        }
+
+        /**
+         * Streaming chat limits.
+         *
+         * <p>The agent a chat turn runs is configuration rather than a request parameter: letting a
+         * caller name the agent would move routing out of the supervisor and into the browser.
+         *
+         * @param agent agent a chat turn is dispatched to
+         * @param streamTimeout how long one SSE stream may stay open before the client must
+         *     reconnect with {@code Last-Event-ID}
+         * @param maxConcurrentTurns size of the pool running chat turns
+         * @param queueCapacity events one slow client may fall behind before it is told to reconnect
+         * @param replayLimit largest number of events replayed in one reconnect
+         */
+        public record Chat(
+                @DefaultValue("supervisor") String agent,
+                @DefaultValue("10m") Duration streamTimeout,
+                @DefaultValue("4") int maxConcurrentTurns,
+                @DefaultValue("256") int queueCapacity,
+                @DefaultValue("2000") int replayLimit) {
         }
 
         /**

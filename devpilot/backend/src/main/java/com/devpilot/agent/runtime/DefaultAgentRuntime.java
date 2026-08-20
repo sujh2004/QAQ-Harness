@@ -137,7 +137,7 @@ public class DefaultAgentRuntime implements AgentRuntime {
 
             String answer = response.content() == null ? "" : response.content();
             lifecycleService.recordAssistantMessage(
-                    request.sessionId(), request.turnId(), stepId, agent.name(), answer);
+                    request.sessionId(), request.turnId(), stepId, runId, agent.name(), answer);
             lifecycleService.endStep(
                     request.sessionId(), stepId, StepStatus.COMPLETED, "answer produced");
             lifecycleService.finishAgentRun(
