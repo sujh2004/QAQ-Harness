@@ -60,6 +60,8 @@ services:
       APP_SKILL_DIR: /app/data/skills
       # Imports the bundled corpus the first time; skipped once the project has documents.
       APP_KNOWLEDGE_SEED_DEMO_DOCUMENTS: "true"
+      # HTTPS only — the backend refuses anything else, because skills execute.
+      SKILL_MARKETPLACE_URL: ${SKILL_MARKETPLACE_URL:-}
       TZ: Asia/Shanghai
     volumes:
       # Read-only: the agent may search and read this code, never write it.

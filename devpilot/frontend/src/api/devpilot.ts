@@ -3,6 +3,7 @@ import type {
   AgentRun,
   ApiResult,
   ErrorSummary,
+  InstalledSkill,
   KnowledgeDocument,
   KnowledgeMatch,
   LogEntry,
@@ -13,6 +14,7 @@ import type {
   RepositoryValidation,
   Session,
   SessionEvent,
+  SkillPackage,
   TestCase,
 } from './types'
 
@@ -282,4 +284,91 @@ export function listTestCases(
  */
 export function deleteTestCase(id: number): Promise<unknown> {
   return unwrap(http.delete<ApiResult<unknown>>(`/api/v1/test-cases/${id}`))
+}
+
+/**
+ * Reads the marketplace catalogue. Browsing installs nothing.
+ */
+export function browseSkills(): Promise<SkillPackage[]> {
+  return unwrap(
+    http.get<ApiResult<SkillPackage[]>>('/api/v1/skills/marketplace', { timeout: 30_000 }),
+  )
+}
+
+/** Lists the skills installed on this deployment. */
+export function listInstalledSkills(): Promise<InstalledSkill[]> {
+  return unwrap(http.get<ApiResult<InstalledSkill[]>>('/api/v1/skills'))
+}
+
+/**
+ * Installs one package from the marketplace.
+ *
+ * @param skillKey package identifier
+ */
+export function installSkill(skillKey: string): Promise<InstalledSkill> {
+  return unwrap(
+    http.post<ApiResult<InstalledSkill>>('/api/v1/skills', { skillKey }, { timeout: 60_000 }),
+  )
+}
+
+/**
+ * Removes an installed skill and its files.
+ *
+ * @param skillKey package identifier
+ */
+export function uninstallSkill(skillKey: string): Promise<unknown> {
+  return unwrap(http.delete<ApiResult<unknown>>(`/api/v1/skills/${skillKey}`))
+}
+
+/**
+ * Lists the skills enabled for a project.
+ *
+ * @param projectId project identity
+ */
+export function listEnabledSkills(projectId: number): Promise<InstalledSkill[]> {
+  return unwrap(http.get<ApiResult<InstalledSkill[]>>(`/api/v1/projects/${projectId}/skills`))
+}
+
+/**
+ * Enables or disables a skill for one project.
+ *
+ * @param projectId project identity
+ * @param skillKey package identifier
+ * @param enabled whether agents of this project may see the skill at all
+ */
+export function setSkillEnabled(
+  projectId: number,
+  skillKey: string,
+  enabled: boolean,
+): Promise<InstalledSkill[]> {
+  return unwrap(
+    http.post<ApiResult<InstalledSkill[]>>(`/api/v1/projects/${projectId}/skills`, {
+      skillKey,
+      enabled,
+    }),
+  )
+}
+
+/**
+ * Records a decision about running a skill inside one session.
+ *
+ * @param sessionId session the decision applies to
+ * @param skillKey package identifier
+ * @param approved whether execution is allowed
+ * @param reason safe explanation kept in the audit trail
+ */
+export function decideSkillApproval(
+  sessionId: string,
+  skillKey: string,
+  approved: boolean,
+  reason?: string,
+): Promise<unknown> {
+  return unwrap(
+    http.post<ApiResult<unknown>>(`/api/v1/sessions/${sessionId}/skill-approvals`, {
+      skillKey,
+      approved,
+      decidedBy: 'USER',
+      reason,
+    }),
+  )
 }

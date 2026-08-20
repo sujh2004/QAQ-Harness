@@ -164,3 +164,30 @@ export interface TestCase {
   createdAt: string
 }
 
+/** One package offered by the marketplace. Browsing installs nothing. */
+export interface SkillPackage {
+  key: string
+  name: string
+  version: string
+  description: string | null
+  runtime: string
+  entrypoint: string
+  argsSchema: Record<string, unknown>
+  files: Record<string, string>
+}
+
+/** One skill installed on this deployment. */
+export interface InstalledSkill {
+  id: number
+  skillKey: string
+  name: string
+  version: string
+  description: string | null
+  runtime: string
+  entrypoint: string
+  sourceUrl: string | null
+  checksum: string
+  status: string
+  installedAt: string
+}
+

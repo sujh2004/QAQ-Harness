@@ -1,0 +1,66 @@
+{
+  "name": "DevPilot 演示 Skill 市场",
+  "description": "随仓库发布的示例技能，通过 HTTPS 提供，用于演示安装、启用、审批与沙箱执行的完整链路。",
+  "skills": [
+    {
+      "key": "log-burst-window",
+      "name": "错误爆发窗口",
+      "version": "1.0.0",
+      "description": "把一组日志时间戳按分钟分桶画成文本直方图，给出起始时刻、峰值时刻与分布形态，用来把「最近报错变多了」变成一个具体的时间窗口。可以直接把日志检索结果整段传进来。",
+      "runtime": "PYTHON",
+      "entrypoint": "skill.py",
+      "argsSchema": {
+        "type": "object",
+        "properties": {
+          "timestamps": {
+            "type": "array",
+            "description": "时间戳字符串，或整行日志（每行取第一个 ISO 时间）",
+            "items": {
+              "type": "string"
+            }
+          },
+          "bucketMinutes": {
+            "type": "integer",
+            "description": "分桶粒度（分钟），默认 1，最大 60"
+          }
+        },
+        "required": [
+          "timestamps"
+        ]
+      },
+      "files": {
+        "skill.py": "\"\"\"Finds when a burst of errors started and how it developed.\n\n\"Errors went up\" is not actionable; \"errors went from 0 to 37 per minute at 10:31, three minutes\nafter the coupon service started returning 503\" is. This skill buckets timestamps by minute, draws\na text histogram and reports the peak, so an agent can name a window instead of a vague \"recently\".\n\nContract with the sandbox: arguments arrive as one JSON object on stdin, the result is written to\nstdout. There is no network access, no argv, and no inherited environment.\n\nInput:\n    {\"timestamps\": [\"2026-08-20T10:31:02\", ...], \"bucketMinutes\": 1}\n\nTimestamps may also be embedded in whole log lines; the first ISO-like timestamp on each line is\nused, which means the output of a log search can be pasted in unchanged.\n\"\"\"\n\nimport json\nimport re\nimport sys\nfrom collections import Counter\nfrom datetime import datetime\n\nTIMESTAMP = re.compile(\n    r\"(\\d{4})-(\\d{2})-(\\d{2})[T ](\\d{2}):(\\d{2}):(\\d{2})\"\n)\n\nBAR_WIDTH = 40\nMAX_BUCKETS = 60\n\n\ndef parse_timestamp(value):\n    match = TIMESTAMP.search(str(value))\n    if not match:\n        return None\n    year, month, day, hour, minute, second = (int(part) for part in match.groups())\n    try:\n        return datetime(year, month, day, hour, minute, second)\n    except ValueError:\n        return None\n\n\ndef bucket_of(moment, bucket_minutes):\n    minute = (moment.minute // bucket_minutes) * bucket_minutes\n    return moment.replace(minute=minute, second=0, microsecond=0)\n\n\ndef render(counts, bucket_minutes, parsed, skipped):\n    if not counts:\n        return \"没有可用的时间戳：请确认传入的是日志行或 ISO 时间字符串。\"\n\n    ordered = sorted(counts.items())\n    peak_bucket, peak_count = max(ordered, key=lambda item: (item[1], item[0]))\n    scale = max(peak_count, 1)\n\n    out = [\n        f\"共解析 {parsed} 条时间戳\"\n        + (f\"，另有 {skipped} 条无法识别已跳过\" if skipped else \"\")\n        + f\"，按 {bucket_minutes} 分钟分桶：\",\n        \"\",\n    ]\n\n    shown = ordered[-MAX_BUCKETS:]\n    if len(ordered) > MAX_BUCKETS:\n        out.append(f\"（只显示最近 {MAX_BUCKETS} 个桶，共 {len(ordered)} 个）\")\n        out.append(\"\")\n\n    for moment, count in shown:\n        bar = \"█\" * max(1, round(count / scale * BAR_WIDTH))\n        out.append(f\"  {moment:%m-%d %H:%M}  {count:>4}  {bar}\")\n\n    first_bucket = ordered[0][0]\n    span_minutes = int((ordered[-1][0] - first_bucket).total_seconds() // 60) + bucket_minutes\n    out.append(\"\")\n    out.append(f\"起始：{first_bucket:%Y-%m-%d %H:%M}\")\n    out.append(f\"峰值：{peak_bucket:%Y-%m-%d %H:%M}，{peak_count} 条\")\n    out.append(f\"跨度：{span_minutes} 分钟\")\n\n    # A single dense bucket and a long flat tail mean different things to whoever reads this.\n    if len(ordered) == 1:\n        out.append(\"形态：全部集中在一个时间桶内，像是一次性爆发而非持续故障。\")\n    elif peak_count >= 3 * (sum(counts.values()) / len(ordered)):\n        out.append(\"形态：存在明显尖峰，建议以峰值时刻为中心追查上游变更或依赖故障。\")\n    else:\n        out.append(\"形态：分布较平缓，更像持续性问题而非突发事件。\")\n    return \"\\n\".join(out)\n\n\ndef main():\n    raw = sys.stdin.read().strip()\n    try:\n        arguments = json.loads(raw) if raw else {}\n    except json.JSONDecodeError:\n        print(\"参数不是合法的 JSON\", file=sys.stderr)\n        return 2\n\n    values = arguments.get(\"timestamps\")\n    if isinstance(values, str):\n        values = values.splitlines()\n    if not values:\n        print(\"timestamps 不能为空\", file=sys.stderr)\n        return 2\n\n    try:\n        bucket_minutes = int(arguments.get(\"bucketMinutes\") or 1)\n    except (TypeError, ValueError):\n        bucket_minutes = 1\n    bucket_minutes = min(max(bucket_minutes, 1), 60)\n\n    counts = Counter()\n    parsed = 0\n    skipped = 0\n    for value in values:\n        moment = parse_timestamp(value)\n        if moment is None:\n            skipped += 1\n            continue\n        parsed += 1\n        counts[bucket_of(moment, bucket_minutes)] += 1\n\n    print(render(counts, bucket_minutes, parsed, skipped))\n    return 0\n\n\nif __name__ == \"__main__\":\n    sys.exit(main())\n"
+      }
+    },
+    {
+      "key": "stacktrace-digest",
+      "name": "堆栈摘要",
+      "version": "1.0.0",
+      "description": "把一段 Java 堆栈压缩成异常链与最上层应用代码帧，直接给出该打开的文件与行号，折叠框架噪声。适合拿到日志里的堆栈之后、去读代码之前调用。",
+      "runtime": "PYTHON",
+      "entrypoint": "skill.py",
+      "argsSchema": {
+        "type": "object",
+        "properties": {
+          "stackTrace": {
+            "type": "string",
+            "description": "完整的 Java 堆栈文本，直接从日志里取"
+          },
+          "appPackages": {
+            "type": "array",
+            "description": "应用代码的包前缀，例如 [\"com.demo\"]；不传则按启发式排除 JDK 与常见框架",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "stackTrace"
+        ]
+      },
+      "files": {
+        "skill.py": "\"\"\"Condenses a Java stack trace into the part that matters.\n\nA stack trace is mostly framework noise: the useful information is the exception chain and the\nfirst frame that belongs to the application, because that is the line a developer opens. This skill\nextracts exactly that, so an agent can hand a code reader a file and a line number instead of forty\nframes of Spring internals.\n\nContract with the sandbox: arguments arrive as one JSON object on stdin, the result is written to\nstdout. There is no network access, no argv, and no inherited environment.\n\nInput:\n    {\"stackTrace\": \"...\", \"appPackages\": [\"com.demo\"]}\n\n`appPackages` is optional; without it every non-JDK, non-framework package counts as application\ncode.\n\"\"\"\n\nimport json\nimport re\nimport sys\n\nFRAME = re.compile(r\"^\\s*at\\s+([\\w$.]+)\\.([\\w$<>]+)\\(([^)]*)\\)\\s*$\")\nCAUSE = re.compile(r\"^\\s*(Caused by:|Suppressed:)\\s*(.+)$\")\nHEADER = re.compile(r\"^\\s*([\\w$.]+(?:Exception|Error|Throwable))(?::\\s*(.*))?$\")\n\n# Frames from these roots explain how the call arrived, never what went wrong in this codebase.\nNOISE = (\n    \"java.\", \"javax.\", \"jakarta.\", \"jdk.\", \"sun.\", \"com.sun.\",\n    \"org.springframework.\", \"org.apache.\", \"io.netty.\", \"reactor.\",\n    \"org.junit.\", \"org.mockito.\", \"com.zaxxer.hikari.\",\n)\n\nMAX_FRAMES = 8\n\n\ndef is_application(class_name, app_packages):\n    if app_packages:\n        return any(class_name.startswith(prefix) for prefix in app_packages)\n    return not class_name.startswith(NOISE)\n\n\ndef parse(stack_trace, app_packages):\n    exceptions = []\n    frames = []\n    for line in stack_trace.splitlines():\n        frame = FRAME.match(line)\n        if frame:\n            class_name, method, location = frame.groups()\n            frames.append({\n                \"class\": class_name,\n                \"method\": method,\n                \"location\": location.strip(),\n                \"application\": is_application(class_name, app_packages),\n            })\n            continue\n\n        cause = CAUSE.match(line)\n        text = cause.group(2) if cause else line\n        header = HEADER.match(text)\n        if header:\n            exceptions.append({\n                \"type\": header.group(1),\n                \"message\": (header.group(2) or \"\").strip(),\n                \"caused\": bool(cause),\n            })\n    return exceptions, frames\n\n\ndef render(exceptions, frames):\n    out = []\n\n    if exceptions:\n        out.append(\"异常链：\")\n        for index, exception in enumerate(exceptions):\n            prefix = \"  └ 由此引起: \" if exception[\"caused\"] else f\"  {index + 1}. \"\n            message = f\" — {exception['message']}\" if exception[\"message\"] else \"\"\n            out.append(f\"{prefix}{exception['type']}{message}\")\n    else:\n        out.append(\"异常链：未能从文本中识别出异常类型\")\n\n    application = [frame for frame in frames if frame[\"application\"]]\n    if application:\n        first = application[0]\n        out.append(\"\")\n        out.append(\"出问题的应用代码（最上层应用帧）：\")\n        out.append(f\"  {first['class']}.{first['method']}  →  {first['location']}\")\n        if len(application) > 1:\n            out.append(\"\")\n            out.append(\"应用调用链（自上而下）：\")\n            for frame in application[:MAX_FRAMES]:\n                out.append(f\"  {frame['class']}.{frame['method']}  ({frame['location']})\")\n            if len(application) > MAX_FRAMES:\n                out.append(f\"  … 另有 {len(application) - MAX_FRAMES} 帧应用代码未列出\")\n    else:\n        out.append(\"\")\n        out.append(\"未找到应用代码帧：这条堆栈可能只包含框架内部调用，\"\n                   \"或者 appPackages 传得太窄。\")\n\n    noise = len(frames) - len(application)\n    out.append(\"\")\n    out.append(f\"共 {len(frames)} 帧，其中 {noise} 帧为框架/JDK 内部调用，已折叠。\")\n    return \"\\n\".join(out)\n\n\ndef main():\n    raw = sys.stdin.read().strip()\n    try:\n        arguments = json.loads(raw) if raw else {}\n    except json.JSONDecodeError:\n        print(\"参数不是合法的 JSON\", file=sys.stderr)\n        return 2\n\n    stack_trace = arguments.get(\"stackTrace\") or \"\"\n    if not stack_trace.strip():\n        print(\"stackTrace 不能为空\", file=sys.stderr)\n        return 2\n\n    app_packages = arguments.get(\"appPackages\") or []\n    if isinstance(app_packages, str):\n        app_packages = [app_packages]\n\n    exceptions, frames = parse(stack_trace, tuple(app_packages))\n    print(render(exceptions, frames))\n    return 0\n\n\nif __name__ == \"__main__\":\n    sys.exit(main())\n"
+      }
+    }
+  ]
+}

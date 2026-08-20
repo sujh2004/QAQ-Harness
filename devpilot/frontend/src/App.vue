@@ -99,6 +99,13 @@ onMounted(() => {
           <RouterLink
             class="nav-item"
             active-class="nav-item--active"
+            :to="`/projects/${projectId}/skills`"
+          >
+            技能市场
+          </RouterLink>
+          <RouterLink
+            class="nav-item"
+            active-class="nav-item--active"
             :to="`/projects/${projectId}/sessions`"
           >
             会话与轨迹
@@ -109,7 +116,7 @@ onMounted(() => {
       <div class="phase-note">
         <span>当前里程碑</span>
         <strong>Phase 9</strong>
-        <p>两套故障剧情、七个页面与一键启动，MVP 闭环完成。</p>
+        <p>两套故障剧情、八个页面与一键启动，MVP 闭环完成。</p>
         <ElTag :type="statusType" effect="dark" size="small" round>{{ statusLabel }}</ElTag>
       </div>
     </aside>

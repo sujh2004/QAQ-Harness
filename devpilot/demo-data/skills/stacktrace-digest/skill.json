@@ -1,0 +1,23 @@
+{
+  "key": "stacktrace-digest",
+  "name": "堆栈摘要",
+  "version": "1.0.0",
+  "description": "把一段 Java 堆栈压缩成异常链与最上层应用代码帧，直接给出该打开的文件与行号，折叠框架噪声。适合拿到日志里的堆栈之后、去读代码之前调用。",
+  "runtime": "PYTHON",
+  "entrypoint": "skill.py",
+  "argsSchema": {
+    "type": "object",
+    "properties": {
+      "stackTrace": {
+        "type": "string",
+        "description": "完整的 Java 堆栈文本，直接从日志里取"
+      },
+      "appPackages": {
+        "type": "array",
+        "description": "应用代码的包前缀，例如 [\"com.demo\"]；不传则按启发式排除 JDK 与常见框架",
+        "items": { "type": "string" }
+      }
+    },
+    "required": ["stackTrace"]
+  }
+}

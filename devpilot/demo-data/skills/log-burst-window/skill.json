@@ -1,0 +1,23 @@
+{
+  "key": "log-burst-window",
+  "name": "错误爆发窗口",
+  "version": "1.0.0",
+  "description": "把一组日志时间戳按分钟分桶画成文本直方图，给出起始时刻、峰值时刻与分布形态，用来把「最近报错变多了」变成一个具体的时间窗口。可以直接把日志检索结果整段传进来。",
+  "runtime": "PYTHON",
+  "entrypoint": "skill.py",
+  "argsSchema": {
+    "type": "object",
+    "properties": {
+      "timestamps": {
+        "type": "array",
+        "description": "时间戳字符串，或整行日志（每行取第一个 ISO 时间）",
+        "items": { "type": "string" }
+      },
+      "bucketMinutes": {
+        "type": "integer",
+        "description": "分桶粒度（分钟），默认 1，最大 60"
+      }
+    },
+    "required": ["timestamps"]
+  }
+}

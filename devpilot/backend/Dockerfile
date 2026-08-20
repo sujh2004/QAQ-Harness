@@ -18,9 +18,11 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 
 # curl is here for the compose healthcheck; a health probe that depends on a tool the image may or
-# may not ship is a probe that reports "unhealthy" for the wrong reason.
+# may not ship is a probe that reports "unhealthy" for the wrong reason. python3 is the interpreter
+# the demo skills declare — without it an installed skill fails at launch rather than at review.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends curl python3 \
+    && ln -sf /usr/bin/python3 /usr/local/bin/python \
     && rm -rf /var/lib/apt/lists/*
 
 # The agent reads the demo repository through app.repository.base-dir, which is mounted read-only by
