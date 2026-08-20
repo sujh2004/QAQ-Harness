@@ -34,6 +34,11 @@ export default createRouter({
       component: () => import('@/views/KnowledgeView.vue'),
     },
     {
+      path: '/projects/:projectId/test-cases',
+      name: 'project-test-cases',
+      component: () => import('@/views/TestCasesView.vue'),
+    },
+    {
       path: '/projects/:projectId/sessions',
       name: 'project-sessions',
       component: () => import('@/views/SessionsView.vue'),

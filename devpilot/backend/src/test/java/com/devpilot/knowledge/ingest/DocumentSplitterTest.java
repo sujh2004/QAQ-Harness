@@ -93,6 +93,7 @@ class DocumentSplitterTest {
 
     private static AppProperties properties(int chunkSize, int overlap) {
         return new AppProperties(null, null, null, null, null,
-                new AppProperties.Knowledge("./target/test-vector-splitter", chunkSize, overlap, 5, 0.6));
+                new AppProperties.Knowledge(
+                        "./target/test-vector-splitter", chunkSize, overlap, 5, 0.6, false));
     }
 }

@@ -92,18 +92,24 @@ onMounted(() => {
           <RouterLink
             class="nav-item"
             active-class="nav-item--active"
+            :to="`/projects/${projectId}/test-cases`"
+          >
+            测试用例
+          </RouterLink>
+          <RouterLink
+            class="nav-item"
+            active-class="nav-item--active"
             :to="`/projects/${projectId}/sessions`"
           >
             会话与轨迹
           </RouterLink>
         </template>
-        <span class="nav-item nav-item--muted">测试用例 · Phase 9</span>
       </nav>
 
       <div class="phase-note">
         <span>当前里程碑</span>
-        <strong>Phase 8</strong>
-        <p>SSE 流式对话、Agent 轨迹与断线续传已就绪。</p>
+        <strong>Phase 9</strong>
+        <p>两套故障剧情、七个页面与一键启动，MVP 闭环完成。</p>
         <ElTag :type="statusType" effect="dark" size="small" round>{{ statusLabel }}</ElTag>
       </div>
     </aside>

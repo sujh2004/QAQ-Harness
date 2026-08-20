@@ -8,9 +8,9 @@ import com.devpilot.project.model.ProjectResponse;
 import com.devpilot.project.service.ProjectService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
@@ -21,18 +21,21 @@ import java.util.Comparator;
 import java.util.Locale;
 
 /**
- * Imports the demo knowledge corpus when the demo profile starts.
+ * Imports the demo knowledge corpus at startup.
  *
- * <p>The demo database is in-memory and therefore empty on every boot, while the vector files
- * persist on disk. The index is reset before seeding so the two cannot drift apart — otherwise the
- * second boot would index the corpus twice into the loaded file and every search would return
- * duplicate passages.
+ * <p>Enabled by configuration rather than by profile, because both demo paths need it: the
+ * in-memory demo profile, whose database is empty on every boot, and the Docker stack on MySQL,
+ * where the schema is seeded but the knowledge index is not.
  *
- * <p>Seeding must never keep the demo from starting: without an embedding model the knowledge base
- * is simply reported as unavailable, and any other failure is logged and skipped.
+ * <p>Seeding is skipped when the project already has documents, so it is safe to leave on: a
+ * persistent deployment imports once, and an in-memory one imports on every fresh start. The vector
+ * index is reset first so a persisted index file cannot drift into holding two copies of the corpus.
+ *
+ * <p>Seeding must never keep the application from starting: without an embedding model the
+ * knowledge base is simply reported as unavailable, and any other failure is logged and skipped.
  */
 @Component
-@Profile("demo")
+@ConditionalOnProperty(prefix = "app.knowledge", name = "seed-demo-documents", havingValue = "true")
 public class DemoKnowledgeSeeder implements ApplicationListener<ApplicationReadyEvent> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DemoKnowledgeSeeder.class);

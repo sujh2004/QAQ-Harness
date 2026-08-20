@@ -212,8 +212,8 @@ public class DefaultToolRegistry implements ToolRegistry {
                         "Tool " + definition.name() + " exceeded " + definition.timeout().toMillis() + " ms",
                         elapsedMs(startedAt));
             } catch (ExecutionException exception) {
-                return finishFailure(invocation, callId, definition, ToolCallStatus.PROVIDER_ERROR,
-                        providerErrorCode(exception.getCause()),
+                ToolErrorCode errorCode = providerErrorCode(exception.getCause());
+                return finishFailure(invocation, callId, definition, statusFor(errorCode), errorCode,
                         providerMessage(definition, exception.getCause()), elapsedMs(startedAt));
             } catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
@@ -359,6 +359,28 @@ public class DefaultToolRegistry implements ToolRegistry {
 
     private static ToolErrorCode providerErrorCode(Throwable cause) {
         return cause instanceof ToolExecutionException typed ? typed.errorCode() : ToolErrorCode.PROVIDER_ERROR;
+    }
+
+    /**
+     * Maps a failure reason to the status recorded for the call.
+     *
+     * <p>A provider that rejects the arguments it was given — a path that does not exist, a filter
+     * that matches nothing addressable — has not malfunctioned, and recording it as
+     * {@code PROVIDER_ERROR} would tell both the audit trail and the model that the platform broke
+     * when in fact the model asked for the wrong thing. The distinction matters because it decides
+     * whether the sensible next move is to retry differently or to give up on the tool.
+     *
+     * @param errorCode reason the provider gave
+     * @return status to record
+     */
+    private static ToolCallStatus statusFor(ToolErrorCode errorCode) {
+        return switch (errorCode) {
+            case INVALID_ARGUMENT -> ToolCallStatus.INVALID_ARGUMENT;
+            case PERMISSION_DENIED, TOOL_NOT_VISIBLE, APPROVAL_REJECTED -> ToolCallStatus.DENIED;
+            case TIMEOUT -> ToolCallStatus.TIMEOUT;
+            case ABORTED -> ToolCallStatus.CANCELLED;
+            default -> ToolCallStatus.PROVIDER_ERROR;
+        };
     }
 
     private String providerMessage(ToolDefinition definition, Throwable cause) {

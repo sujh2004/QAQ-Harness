@@ -13,6 +13,7 @@ import type {
   RepositoryValidation,
   Session,
   SessionEvent,
+  TestCase,
 } from './types'
 
 /** Unwraps the common result envelope, turning a business error into a rejection. */
@@ -253,4 +254,32 @@ export function deleteKnowledge(projectId: number, documentId: number): Promise<
       timeout: 300_000,
     }),
   )
+}
+
+/**
+ * Lists the test cases stored for a project.
+ *
+ * @param projectId project identity
+ * @param page zero-based page index
+ * @param size page size
+ */
+export function listTestCases(
+  projectId: number,
+  page = 0,
+  size = 50,
+): Promise<PageResponse<TestCase>> {
+  return unwrap(
+    http.get<ApiResult<PageResponse<TestCase>>>(`/api/v1/projects/${projectId}/test-cases`, {
+      params: { page, size },
+    }),
+  )
+}
+
+/**
+ * Deletes one test case.
+ *
+ * @param id case identity
+ */
+export function deleteTestCase(id: number): Promise<unknown> {
+  return unwrap(http.delete<ApiResult<unknown>>(`/api/v1/test-cases/${id}`))
 }

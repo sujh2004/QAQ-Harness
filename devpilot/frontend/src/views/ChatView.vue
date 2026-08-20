@@ -34,9 +34,13 @@ async function loadSessions() {
   error.value = ''
   try {
     sessions.value = (await listSessions(projectId.value)).items
-    const first = sessions.value[0]
-    if (first) {
-      await selectSession(first.sessionId)
+    // Another page may have linked to a specific conversation, for example the test case that was
+    // designed in it; honouring that beats always opening the newest one.
+    const requested = typeof route.query.session === 'string' ? route.query.session : ''
+    const target = sessions.value.find((session) => session.sessionId === requested)
+      ?? sessions.value[0]
+    if (target) {
+      await selectSession(target.sessionId)
     } else {
       sessionId.value = ''
       reset()

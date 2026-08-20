@@ -20,6 +20,11 @@ spring:
       # The canonical demo data, read from the repository so there is only one copy of it.
       data-locations: file:../sql/demo-data.sql
 
+app:
+  knowledge:
+    # The demo database is empty on every boot, so the corpus is imported each time.
+    seed-demo-documents: true
+
 logging:
   level:
     com.devpilot: INFO

@@ -1,3 +1,15 @@
+# Full stack for a machine that has nothing but Docker.
+#
+#   cp .env.example .env      # then put your DASHSCOPE_API_KEY in it
+#   docker compose --profile full up -d --build
+#   open http://localhost:5173
+#
+# Without the "full" profile only MySQL starts, which is the loop for developing the backend and
+# frontend locally. The schema and demo data are applied by MySQL's own entrypoint on first start,
+# so a fresh volume comes up already populated and the backend needs no manual setup step.
+#
+# The API key is read from the environment and never written into an image or a compose file.
+
 services:
   mysql:
     image: mysql:8.4
@@ -12,6 +24,9 @@ services:
       - "3307:3306"
     volumes:
       - devpilot-mysql-data:/var/lib/mysql
+      # Applied in file-name order the first time the data directory is created.
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./sql/demo-data.sql:/docker-entrypoint-initdb.d/02-demo-data.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-udevpilot", "-pdevpilot"]
       interval: 5s
@@ -19,5 +34,60 @@ services:
       retries: 20
       start_period: 20s
 
+  backend:
+    profiles: ["full"]
+    build:
+      context: ./backend
+    container_name: devpilot-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      # "dashscope" is only useful with a key; without one the app still starts and every read API
+      # works, and agent calls fail with an explicit message instead of a fabricated answer.
+      SPRING_PROFILES_ACTIVE: ${BACKEND_PROFILES:-dashscope}
+      DB_URL: jdbc:mysql://mysql:3306/devpilot?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+      DB_USERNAME: devpilot
+      DB_PASSWORD: devpilot
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
+      CHAT_MODEL: ${CHAT_MODEL:-qwen-plus}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-v3}
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+      # Mirrors the local layout: the backend runs from devpilot/backend, so the repository path
+      # stored in demo-data.sql ("../demo-project/order-demo") resolves the same way in both.
+      APP_REPOSITORY_BASE_DIR: /workspace/backend
+      APP_VECTOR_DIR: /app/data/vector
+      APP_SKILL_DIR: /app/data/skills
+      # Imports the bundled corpus the first time; skipped once the project has documents.
+      APP_KNOWLEDGE_SEED_DEMO_DOCUMENTS: "true"
+      TZ: Asia/Shanghai
+    volumes:
+      # Read-only: the agent may search and read this code, never write it.
+      - ./demo-project:/workspace/demo-project:ro
+      - devpilot-backend-data:/app/data
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  frontend:
+    profiles: ["full"]
+    build:
+      context: ./frontend
+      args:
+        # Baked into the bundle at build time, so it must be the address the browser can reach.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+    container_name: devpilot-frontend
+    depends_on:
+      - backend
+    ports:
+      # Same port as the dev server, so every URL in the documentation keeps working.
+      - "5173:80"
+
 volumes:
   devpilot-mysql-data:
+  devpilot-backend-data:

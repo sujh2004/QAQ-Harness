@@ -2,30 +2,74 @@
 
 DevPilot 是面向企业研发与故障分析的多 Agent 平台。本目录按《DevPilot 企业研发多 Agent 平台实施规格书》从 Phase 0 开始实现。
 
-当前状态：Phase 8 SSE 与前端轨迹。已提供 Spring Boot 后端、Vue 3 前端与六个可用页面、MySQL 开发容器与自包含 demo profile；追加式 `session_event` 事件流、turn/step 状态机、取消与重启恢复、Tool 注册表与执行管线；项目 CRUD、系统日志查询、会话与消息投影、测试用例；七个证据工具、四个委派工具与两个知识检索工具、`demo-project/order-demo` 演示仓库；Supervisor 与五个专业 Agent；Skill 市场、沙箱与安装审批链；per-project 向量知识库与 Knowledge Agent；SSE 流式对话、Agent 轨迹实时展示与 `Last-Event-ID` 断线续传。目前没有伪造接口。
+当前状态：Phase 9 完成，MVP 闭环。Spring Boot 后端 + Vue 3 前端共七个页面；追加式 `session_event` 事件流、turn/step 状态机、取消与重启恢复、Tool 注册表与执行管线；项目 CRUD、日志查询、会话与消息投影、测试用例；七个证据工具、五个委派工具与两个知识检索工具、`demo-project/order-demo` 演示仓库与两套故障剧情；Supervisor 与五个专业 Agent；Skill 市场、沙箱与安装审批链；per-project 向量知识库；SSE 流式对话、Agent 轨迹实时展示与 `Last-Event-ID` 断线续传；Docker 全栈一键启动。191 个后端测试全绿，五个演示问题真实跑通——见[测试报告](docs/test-report.md)。没有伪造接口。
+
+## 三分钟跑起来
+
+只需要 Docker：
+
+```powershell
+cd devpilot
+Copy-Item .env.example .env      # 然后把 DASHSCOPE_API_KEY 填进去
+./scripts/bootstrap.ps1
+```
+
+macOS / Linux 用 `./scripts/bootstrap.sh`。脚本会检查 Docker、构建镜像、等后端健康检查通过，最后打印访问地址。首次约 5–10 分钟（下载依赖），之后几十秒。
+
+- 前端 <http://localhost:5173>
+- 后端 <http://localhost:8080/api/v1/health>
+- MySQL `localhost:3307`（devpilot / devpilot）
+
+数据库的表结构与演示数据由 MySQL 自己的初始化机制在首次启动时载入，知识库的七份演示文档在后端启动时自动导入并建索引——**没有需要手工执行的初始化步骤**。
+
+复位到初始状态：`./scripts/bootstrap.ps1 -Reset`（删卷重来）。停止：`docker compose --profile full down`。
+
+**没有 API Key 也能启动**：所有只读页面照常工作，只有 Agent 调用和知识检索会明确报「未配置模型」——缺 key 就该看起来像缺 key，而不是像坏了。
 
 ## 环境要求
+
+只用 Docker 跑演示：Docker Desktop（或 Docker Engine + Compose v2）即可，以下都不需要。
+
+本地开发才需要：
 
 - JDK 21+
 - Maven 3.9+
 - Node.js 22.19+ 或 24+
 - npm 10+
-- Docker Compose（仅在需要本地 MySQL 时）
 
-## 启动后端
+## 本地开发
+
+三种数据库选择，按需要挑一种。
+
+**最快：demo profile（H2 内存库，免 Docker）**
+
+```powershell
+cd backend
+$env:DASHSCOPE_API_KEY = "sk-..."
+mvn spring-boot:run "-Dspring-boot.run.profiles=demo,dashscope"
+```
+
+进程内建库、载入演示数据、自动导入知识文档；退出即清空，所以两次演示之间重启就是复位。
+
+**贴近生产：MySQL**
 
 ```powershell
 Copy-Item .env.example .env
 docker compose up -d mysql
-docker compose exec -T mysql mysql -udevpilot -pdevpilot devpilot < sql/schema.sql
-docker compose exec -T mysql mysql -udevpilot -pdevpilot devpilot < sql/demo-data.sql
 Set-Location backend
-mvn spring-boot:run "-Dspring-boot.run.profiles=dev"
+mvn spring-boot:run "-Dspring-boot.run.profiles=dev,dashscope"
 ```
 
-MySQL 映射为宿主机 `3307` → 容器 `3306`。健康检查：`GET http://localhost:8080/api/v1/health`。
+MySQL 映射为宿主机 `3307` → 容器 `3306`。表结构与演示数据在容器首次创建数据目录时自动执行；如果卷已存在而需要重新载入：
 
-`sql/schema.sql` 使用 `CREATE TABLE IF NOT EXISTS`，可重复执行；每次新增表后重新执行即可。`sql/demo-data.sql` 载入订单服务演示项目与两个故障剧情的日志，可重复执行。
+```powershell
+docker compose exec -T mysql mysql -udevpilot -pdevpilot devpilot < sql/schema.sql
+docker compose exec -T mysql mysql -udevpilot -pdevpilot devpilot < sql/demo-data.sql
+```
+
+`sql/schema.sql` 使用 `CREATE TABLE IF NOT EXISTS`，可重复执行。`sql/demo-data.sql` 载入订单服务演示项目与两套故障剧情的日志，时间锚定当前时刻，不会过期。
+
+后端必须从 `devpilot/backend` 目录启动——演示项目的仓库路径是相对的，依赖工作目录。
 
 ## 当前可用接口
 
@@ -211,7 +255,7 @@ npm run build
 
 默认前端地址为 `http://localhost:5173`，后端地址通过 `VITE_API_BASE_URL` 配置。
 
-页面：项目列表、项目概览（仓库校验与错误聚合）、**智能对话**（SSE 流式回答 + Agent 轨迹树）、**知识库**（导入、检索、重建索引）、日志检索、会话与事件流。对话页与知识库页需要后端激活 `dashscope` profile；其余页面不需要任何密钥。
+七个页面：项目列表、项目概览（仓库校验与错误聚合）、**智能对话**（SSE 流式回答 + Agent 轨迹树）、**知识库**（导入、检索、重建索引）、日志检索、**测试用例**（Agent 生成并落库的回归方案）、会话与事件流。对话页与知识库页需要后端激活 `dashscope` profile；其余页面不需要任何密钥。
 
 ## 配置
 
@@ -243,9 +287,12 @@ Phase 1 新增的运行时配置项：
 | `app.knowledge.chunk-overlap` | `150` | 相邻块的重叠字符数 |
 | `app.knowledge.top-k` | `5` | 单次检索返回的最大段数 |
 | `app.knowledge.similarity-threshold` | `0.6` | 相关度下限，低于按「未找到」处理 |
+| `app.knowledge.seed-demo-documents` | `false` | 启动时导入内置演示语料；demo profile 与 Docker 栈开启，已有文档则跳过 |
 
 ## 文档
 
 - 产品与实施规格：[`../docs/DevPilot_企业研发多Agent平台_实施规格书.md`](../docs/DevPilot_企业研发多Agent平台_实施规格书.md)
 - 架构边界：[`docs/architecture.md`](docs/architecture.md)
 - 开发说明：[`docs/development.md`](docs/development.md)
+- **功能与性能测试报告**：[`docs/test-report.md`](docs/test-report.md)
+- **演示脚本**：[`docs/demo-script.md`](docs/demo-script.md)

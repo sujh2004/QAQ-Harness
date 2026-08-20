@@ -150,3 +150,17 @@ export interface ChatStreamRequest {
   message?: string
 }
 
+/** One test case an agent designed and stored. */
+export interface TestCase {
+  id: number
+  projectId: number
+  sessionId: string | null
+  title: string
+  priority: string | null
+  precondition: string | null
+  steps: string[]
+  expectedResult: string
+  source: string
+  createdAt: string
+}
+

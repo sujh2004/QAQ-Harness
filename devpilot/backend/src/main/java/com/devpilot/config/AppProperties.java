@@ -37,13 +37,16 @@ public record AppProperties(
      * @param chunkOverlap characters repeated between neighbouring chunks
      * @param topK how many chunks a search returns at most
      * @param similarityThreshold lowest score a chunk may have and still be returned
+     * @param seedDemoDocuments whether the bundled demo corpus is imported at startup when the demo
+     *     project has no documents yet
      */
     public record Knowledge(
             @DefaultValue("./data/vector") String vectorDir,
             @DefaultValue("800") int chunkSize,
             @DefaultValue("150") int chunkOverlap,
             @DefaultValue("5") int topK,
-            @DefaultValue("0.6") double similarityThreshold) {
+            @DefaultValue("0.6") double similarityThreshold,
+            @DefaultValue("false") boolean seedDemoDocuments) {
     }
 
     /**

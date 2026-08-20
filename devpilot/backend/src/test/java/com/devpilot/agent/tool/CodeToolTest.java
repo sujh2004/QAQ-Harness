@@ -109,12 +109,26 @@ class CodeToolTest {
                 Map.of("projectId", projectId, "relativePath", "../../../../etc/passwd",
                         "startLine", 1, "endLine", 10));
 
-        assertThat(result.status()).isEqualTo(ToolCallStatus.PROVIDER_ERROR);
+        // A refused escape is a denial, not a malfunction — the status has to say which, because it
+        // is what tells the model whether retrying differently could ever work.
+        assertThat(result.status()).isEqualTo(ToolCallStatus.DENIED);
         assertThat(result.errorCode()).isEqualTo(ToolErrorCode.PERMISSION_DENIED);
 
         ToolCallView audit = AgentToolFixtures.auditOf(lifecycleService, sessionId, result.callId());
         assertThat(audit.status().terminal()).isTrue();
         assertThat(audit.toolName()).isEqualTo(CodeSearchTools.READ_CODE_FILE);
+    }
+
+    @Test
+    void reportsAPathThatDoesNotExistAsABadArgument() {
+        // Models guess module names. Recording the guess as a provider error would claim the
+        // platform broke, and would read that way in the audit trail forever.
+        ToolExecutionResult result = invoke(CodeSearchTools.LIST_FILES,
+                Map.of("projectId", projectId, "relativePath", "order-service/src/main/resources"));
+
+        assertThat(result.status()).isEqualTo(ToolCallStatus.INVALID_ARGUMENT);
+        assertThat(result.errorCode()).isEqualTo(ToolErrorCode.INVALID_ARGUMENT);
+        assertThat(result.message()).contains("does not exist");
     }
 
     @Test

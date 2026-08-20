@@ -995,3 +995,65 @@ code {
   border-bottom: 1px solid #eceff0;
   vertical-align: top;
 }
+
+/* ---- Test cases (Phase 9) ---- */
+
+.case-list {
+  display: grid;
+  gap: 14px;
+}
+
+.case-card {
+  padding: 14px 16px;
+  border: 1px solid #dee4df;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 70%);
+}
+
+.case-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.case-head strong {
+  font-size: 14px;
+}
+
+.case-spacer {
+  flex: 1;
+}
+
+.case-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.case-row p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.case-label {
+  color: #71817c;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.case-steps {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.case-foot {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #eceff0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}

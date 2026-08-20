@@ -21,7 +21,7 @@ class ProjectVectorStoresTest {
         ProjectVectorStores stores = new ProjectVectorStores(
                 providerOf(null),
                 new AppProperties(null, null, null, null, null,
-                        new AppProperties.Knowledge(vectorDir.toString(), 800, 150, 5, 0.6)));
+                        new AppProperties.Knowledge(vectorDir.toString(), 800, 150, 5, 0.6, false)));
 
         assertThatThrownBy(() -> stores.search(1, "优惠券 空指针", 5, 0.5))
                 .isInstanceOf(KnowledgeUnavailableException.class)

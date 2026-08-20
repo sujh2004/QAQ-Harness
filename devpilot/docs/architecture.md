@@ -178,5 +178,13 @@ MVP 只有一个会写数据的工具：`saveTestCases`。它要同时通过两�
 
 ## 分阶段约束
 
-Phase 0 建立工程、配置、统一错误响应和健康检查。Phase 1 实现 Session Event Log、生命周期、Tool Registry 与运行时接口，不创建 Controller、业务表或空壳 Agent。Phase 2 加入项目、日志与会话业务：`dev_project`、`system_log`、`chat_session` 与作为投影的 `chat_message`，以及对应的 REST 接口和 demo 数据。Phase 3 加入 Code Tool 与 Log Tool 及 `demo-project/order-demo` 演示仓库，全部只读且经 `ToolRegistry` 执行；此阶段不建 Supervisor，Fake Model Provider 仍只存在于测试源码。Phase 4 实现自研 Agent 循环与 Spring AI Provider。Phase 5 加入 `code_agent`、`log_agent`、`test_agent` 与 `saveTestCases`。Phase 6 加入 Supervisor 与委派工具。Phase 7 加入知识库：`knowledge_document`、per-project 向量索引、`DocumentSplitter`、`searchKnowledge`/`listKnowledgeDocuments` 工具与 `knowledge_agent`；Knowledge Agent 不先于其工具存在。Phase 8 加入 SSE 聊天与前端轨迹：广播器、`POST /api/v1/chat/stream`、对话页与知识库页；先保证后端稳定输出业务事件，UI 只是它的消费者。
+Phase 0 建立工程、配置、统一错误响应和健康检查。Phase 1 实现 Session Event Log、生命周期、Tool Registry 与运行时接口，不创建 Controller、业务表或空壳 Agent。Phase 2 加入项目、日志与会话业务：`dev_project`、`system_log`、`chat_session` 与作为投影的 `chat_message`，以及对应的 REST 接口和 demo 数据。Phase 3 加入 Code Tool 与 Log Tool 及 `demo-project/order-demo` 演示仓库，全部只读且经 `ToolRegistry` 执行；此阶段不建 Supervisor，Fake Model Provider 仍只存在于测试源码。Phase 4 实现自研 Agent 循环与 Spring AI Provider。Phase 5 加入 `code_agent`、`log_agent`、`test_agent` 与 `saveTestCases`。Phase 6 加入 Supervisor 与委派工具。Phase 7 加入知识库：`knowledge_document`、per-project 向量索引、`DocumentSplitter`、`searchKnowledge`/`listKnowledgeDocuments` 工具与 `knowledge_agent`；Knowledge Agent 不先于其工具存在。Phase 8 加入 SSE 聊天与前端轨迹：广播器、`POST /api/v1/chat/stream`、对话页与知识库页；先保证后端稳定输出业务事件，UI 只是它的消费者。Phase 9 收口：测试用例页、Docker 全栈与一键启动脚本、两套故障剧情的端到端验证与[测试报告](test-report.md)。
+
+## 工具失败的分类
+
+一次工具调用失败时，记录哪种状态不是显示问题，而是语义问题：它决定模型下一步该重试还是该放弃，也决定审计轨迹里这条记录将来被怎么读。
+
+`PROVIDER_ERROR` 的含义是「平台坏了」。模型猜了一个不存在的路径、传了越界的参数——这些是**模型问错了**，平台工作正常。所以 `ToolErrorCode` 决定 `ToolCallStatus`：`INVALID_ARGUMENT` 记成参数错误，`PERMISSION_DENIED` 与 `TOOL_NOT_VISIBLE` 记成拒绝，只有真正的 provider 异常才是 `PROVIDER_ERROR`。
+
+这条是端到端跑演示问题时暴露的：代码 Agent 连猜三个不存在的目录，审计里留下三条 `PROVIDER_ERROR`，读起来像平台崩了三次。
 
